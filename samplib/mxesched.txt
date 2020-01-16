@@ -1,0 +1,5 @@
+/************************************************************/
+/*  SAMPLE PPT ENTRY FOR THE MXE APPLICATION                */
+/*  ADD TO YOUR SCHEDxx PARMLIB MEMBER                      */
+/************************************************************/
+PPT PGMNAME(MXESRVMN) KEY(2) NOSWAP

@@ -1,0 +1,273 @@
+          MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name       : MXETASK
+.*
+.* Function   : The MXETASK macro provides generic task management
+.*            : services
+.*
+.*            : Each subtask in MXE is represented by a MXETASK control
+.*              block from a cell pool owned by the MXE server address
+.*              space.
+.*
+.*            : To start a subtask, MXE uses the following logic:
+.*
+.*              (1) Obtain cell from MXEGBVT_MXETASK_CPID and format
+.*                  as MXETASK structure.
+.*
+.*              (2) ATTACH new task using the specified program name
+.*
+.*              (3) Create a home level name/token using the TCB addr
+.*                  part of the name and the MXETASK address as part
+.*                  of the token. This name/token is used by the
+.*                  end-of-task exit routine to locate the MXETASK
+.*                  for the terminating TCB.
+.*
+.*              (4) The mother task now waits for the daughter task
+.*                  to post the "start" ECB (MXETASK_START_ECB)
+.*
+.*              (5) The daughter task perfroms its own initialization
+.*                  and gets to a point where it informs the mother
+.*                  task that it is ready by posting MXETASK_START_ECB
+.*                  and waiting on MXETASK_GO_ECB.
+.*
+.*              (6) The mother task now posts the "GO" ECB to indicate
+.*                  that the daughter can start processing.
+.*
+.*
+.* Syntax     :
+.*              MXETASK REQ=ATTACH,PROGRAM=program_name
+.*                Create MXETASK structure and attach new task.
+.*                Service is issued by mother task.
+.*
+.*              MXETASK REQ=GO
+.*                Inform daughter task to start processing.
+.*                Service is issued by mother task.
+.*
+.*              MXETASK REQ=START
+.*                Inform mother task that daughter has initialized.
+.*                Service is issued by daughter task.
+.*
+.*              MXETASK REQ=STOP
+.*                Inform daughter task to stop processing.
+.*                Service is issued by mother task.
+.*
+.*              MXETASK REQ=SET_NAME,NAME=task_name,TCB=tcbaddr
+.*                Create name portion of the task name/token
+.*
+.*
+.* Keywords   :
+.*
+.*              PROGRAM=program_name
+.*                The name of an 8-byte field padded to the right with
+.*                blanks of the program to ATTACH for the new task.
+.*
+.*              NAME=name_field
+.*                The name of the receiving field for the name/token
+.*                name used to anchor the subtask so that the TCB
+.*                end of task exit routine can locate the MXETASK
+.*                for the terminating TCB.
+.*
+.*              TCB=tcbaddr
+.*                The name (ir register) containing the TCB address of
+.*                the newly created task.
+.*
+.*
+.* Note       :  Macro assumes addressability to the MXETASK structure
+.*               and also the MXEGBVT.
+.*
+.*            :  Mother task does not issue the DETACH for ending
+.*               subtasks as this is done in the generic end-of-task
+.*               exit rotuine (MXEEOTXR).
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXETASK &REQ=,&NAME=MXETASK_NAME,&TCB=TCB,&PROGRAM=,&DSECT=NO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the DSECT= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC IN_LIST,DSECT,&DSECT,LIST=(YES,NO)
+          AIF   ('&DSECT' EQ 'YES').DSECT
+          MXEMAC IN_LIST,REQ,&REQ,LIST=(ATTACH,GO,SET_NAME,START,STOP)
+          AIF ('&REQ' EQ 'ATTACH').REQATCH
+          AIF ('&REQ' EQ 'GO').REQGO
+          AIF ('&REQ' EQ 'SET_NAME').REQSET
+          AIF ('&REQ' EQ 'START').REQSTA
+          AIF ('&REQ' EQ 'STOP').REQSTO
+.REQSET   ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* REQ=SET_NAME
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC LOAD_ADDR,R15,&NAME             Target name field
+          MVC   0(12,R15),=CL12'MXE.MXETASK'
+          MXEMAC LOAD_ADDR,R0,&TCB               Task TCB address
+          ST    R0,12(,R15)
+          AGO   .DONE
+.REQATCH  ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* REQ=ATTACH
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC INIT,MXETASK,LENGTH==AL4(MXETASK@LEN)  Clear
+          MXEMAC SET_ID,MXETASK                         Init
+          MVC   MXETASK_MXEGBVT,MXEGBVT_MXEGBVT         Anchor
+          MXEMAC LOAD_ADDR,R1,&PROGRAM
+          MVC   MXETASK_PROGRAM,0(R1)                   Copy pgm name
+          LLGT  R2,MXEGBVT_MXEEOTXR                     end-of-task
+          ATTACHX EPLOC=MXETASK_PROGRAM,                               +
+               PARAM=MXETASK,                                          +
+               ETXR=(R2),                                              +
+               ECB=MXETASK_ECB,                                        +
+               ALCOPY=YES,                                             +
+               SZERO=NO,                                               +
+               SM=SUPV,                                                +
+               SF=(E,MXETASK_ATTACHX_SF),                              +
+               MF=(E,MXETASK_ATTACHX_MF)
+          IF (LTR,R15,R15,NZ)                           Abend if bad
+            MXEMAC ABEND,MXEGBVT@RSN_ATTACH
+          ENDIF
+          ST    R1,MXETASK_TCB                          Remember TCB
+          MXETASK REQ=SET_NAME,TCB=(R1)                 Name/token name
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Build name/token for subtask
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC GET_IEANTCR,R15
+          CALL  (15),(=AL4(IEANT_HOME_LEVEL),                          +
+               MXETASK_NAME,                                           +
+               MXETASK_TOKEN,                                          +
+               =AL4(IEANT_NOPERSIST),                                  +
+               MXETASK_RC),                                            +
+               MF=(E,MXETASK_PLIST)
+          AGO   .DONE
+.REQGO    ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* REQ=GO
+.* Build ECB list in case subtask terms early (MXETASK_ECB posted)
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC VAR_LIST,MXETASK_ECBLIST,                             +
+               LIST=(MXETASK_START_ECB,MXETASK_ECB)
+          IF (TM,MXETASK_ECB,ECBPOST,O)          Early term ?
+            MXEMAC ABEND,MXEGBVT@RSN_SUBTASK
+          ENDIF
+          POST  MXETASK_GO_ECB                   Tell task to "GO"
+          AGO   .DONE
+.REQSTA   ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* REQ=START
+.*-------+---------+---------+---------+---------+---------+---------+-
+          POST  MXETASK_START_ECB                Tell mother I ready
+          WAIT  ECB=MXETASK_GO_ECB               ..and wait for GO
+          AGO   .DONE
+.REQSTO   ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* REQ=STOP
+.* Note the MXEEOTXR should post the MXETASK_DETACH_ECB after it has
+.* detached the subtask.
+.*-------+---------+---------+---------+---------+---------+---------+-
+          POST  MXETASK_TERM_ECB                 Tell daugther to STOP
+          MXEMAC VAR_LIST,MXETASK_ECBLIST,                             +
+               LIST=(MXETASK_DETACH_ECB,MXETASK_ECB)
+          WAIT  1,ECBLIST=MXETASK_ECBLIST
+          AGO   .DONE
+.DSECT    ANOP
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXETASK
+*
+* Function        : MXE Generic Task Descriptor
+*
+* Pointed to      :
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETASK                DSECT
+MXETASK_ID             DS    CL8        MXETASK eyecatcher
+MXETASK@SP             EQU   230
+MXETASK@KEY            EQU   2
+MXETASK@PCELLCT        EQU   4
+MXETASK_VER            DS    X          MXETASK version
+MXETASK@VER_CURRENT    EQU   X'01'      ..MXETASK current version
+MXETASK_RESV_1         DS    X          Reseved fields
+MXETASK_RESV_2         DS    X          ..
+MXETASK_RESV_3         DS    X          ..
+MXETASK_LEN            DS    F          Length of MXETASK
+MXETASK_NEXT           MXEMAC ADDR_64   linked to next TASK
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name/Token contents
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETASK_TOKEN          DS    0XL16
+MXETASK_MXETASK        MXEMAC ADDR_64   Address of self
+MXETASK_STCK           DS    XL8        Created STCK
+MXETASK@TOKEN_LEN      EQU   *-MXETASK_TOKEN
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+* Flags
+*--------+---------+---------+---------+---------+---------+---------+-
+                       DS    0D
+MXETASK_FLG            MXEMAC BIT_REF   Alignment for OIL/NIL
+MXETASK_FLG1           DS    X          MXETASK Flag settings #1
+MXETASK@FLG1_SHUTDOWN  EQU   X'80'      ..Task shutting down
+MXETASK_FLG2           DS    X          MXETASK Flag settings #2
+MXETASK_FLG3           DS    X          MXETASK Flag settings #3
+MXETASK_FLG4           DS    X          MXETASK Flag settings #4
+*--------+---------+---------+---------+---------+---------+---------+-
+* Data areas and ID
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETASK_PROGRAM        DS    CL8       Program name
+MXETASK_MXEGBVT        MXEMAC ADDR_64  Global anchor
+MXETASK_WORKAREA       MXEMAC ADDR_64  Workarea address
+                       DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name/Token "Name"
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETASK_NAME           DS    CL12      'MXE:TASK'
+MXETASK_TCB            DS    A         TCB address
+MXETASK@NAME_LEN       EQU   *-MXETASK_NAME
+                       DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* Other misc fields
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETASK_RC             DS    F         Return code
+                       DS    0D
+MXETASK_MXETIMER       DS    XL(MXETIMER@LEN)
+                       DS    8D
+*--------+---------+---------+---------+---------+---------+---------+-
+* ECBs
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETASK_ECB            DS    XL4
+MXETASK_START_ECB      DS    XL4
+MXETASK_GO_ECB         DS    XL4
+MXETASK_TERM_ECB       DS    XL4
+MXETASK_DETACH_ECB     DS    XL4
+MXETASK_WORK_ECB       DS    XL4       Generic wait-for-work ECB
+MXETASK_ECBLIST        DS    XL(8*4)
+                       DS    8D
+*--------+---------+---------+---------+---------+---------+---------+-
+* General work areas
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETASK_ATTACHX_SF     ATTACHX EPLOC=*-*,SF=L
+MXETASK_ATTACHX_MF     DS    XL(8*4)
+MXETASK_PLIST          DS    XL(8*8)
+                       DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* Area reserved for recovery
+*--------+---------+---------+---------+---------+---------+---------+-
+                       DS    0D
+                       MXECATCH MF=(L,MXETASK_MXECATCH)
+                       DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* Area reserved for expansion
+*--------+---------+---------+---------+---------+---------+---------+-
+                       DS    0D
+                       DS    XL256
+                       DS    0D
+MXETASK@LEN            EQU   *-MXETASK  length of MXETASK
+*
+*
+*
+          MXECATCH DSECT=YES
+          MXETIMER DSECT=YES
+*
+*
+*
+.DONE     ANOP
+          MEND

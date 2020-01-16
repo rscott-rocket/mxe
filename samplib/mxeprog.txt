@@ -1,0 +1,5 @@
+/************************************************************/
+/*  SAMPLE APF ENTRY FOR THE MXE LOAD LIBRARY               */
+/*  ADD TO YOUR PROGxx PARMLIB MEMBER                       */
+/************************************************************/
+APF ADD DSNAME(MXE.SMXELOAD) SMS

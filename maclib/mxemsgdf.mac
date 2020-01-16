@@ -1,0 +1,123 @@
+         MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name       : MXEMSGDF
+.*
+.* Function   : The MXEMSGDF macro builds an entry for the message
+.*            : table
+.*
+.*
+.* Syntax     : MXEMSGDF INDEX,MAX=n
+.*            : MXEMSGDF START,NUM=nnnn,SEV=(I/W/E)
+.*            : MXEMSFDF TEXT,'xxxxx'
+.*            : MXEMSFDF OVERLAY,'xxxxx'
+.*            : MXEMSGDF END
+.*
+.* Keywords   :
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2020/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMSGDF &REQ,                                               +
+               &TEXT,                                                  +
+               &NUM=,                                                  +
+               &MAX=,                                                  +
+               &SEV=I,                                                 +
+               &DSECT=NO
+          AIF  ('&DSECT' EQ 'YES').DSECT
+          GBLA &MSGO#
+          GBLC &MSGID
+          GBLC &MSGOL(8)
+          MXEMAC IS_REQ,REQ,&REQ
+          MXEMAC IN_LIST,REQ,&REQ,LIST=(INDEX,START,TEXT,OVERLAY,END)
+          AIF ('&REQ' EQ 'INDEX').REQINDEX
+          AIF ('&REQ' EQ 'START').REQSTART
+          AIF ('&REQ' EQ 'TEXT').REQTEXT
+          AIF ('&REQ' EQ 'OVERLAY').REQOVER
+          AIF ('&REQ' EQ 'END').REQEND
+.REQINDEX ANOP
+          MXEMAC IS_REQ,MAX,&MAX
+                 DC    A(MXEMSG_INDEX)
+                 DC    A(&MAX)
+MXEMSG_INDEX     DS    0D
+&I        SETA   1
+.LINDEX   ANOP
+&I#       SETC   '&I'
+          AIF (&I GT 999).GOTI#
+&I#       SETC   '0&I'
+          AIF (&I GT 99).GOTI#
+&I#       SETC   '00&I'
+          AIF (&I GT 9).GOTI#
+&I#       SETC   '000&I'
+.GOTI#    ANOP
+                 DC    A(MXE&I#),A(MXE&I#._OVERLAY)
+&I        SETA   &I+1
+          AIF (&I LE &MAX).LINDEX
+          AGO   .END
+.REQSTART ANOP
+          MXEMAC IS_REQ,NUM,&NUM
+          MXEMAC IS_REQ,SEV,&SEV
+&MSGID    SETC  'MXE&NUM'
+&MSGO#    SETA  0
+                 DS    0D
+&MSGID           DC    Y(&MSGID.@LEN)
+&MSGID._ID       DC    C'&MSGID&SEV'
+          AGO   .END
+.REQOVER  ANOP
+          MXEMAC IS_REQ,TEXT,&TEXT
+&MSGO#    SETA  &MSGO#+1
+&MSGID._O&MSGO#  DC    C&TEXT
+&MSGID.@O&MSGO#  EQU   &MSGID._O&MSGO#-&MSGID._ID
+&MSGID.@L&MSGO#  EQU   L'&MSGID._O&MSGO#
+&MSGOL(&MSGO#)   SETC  'A(&MSGID.@O&MSGO#),A(&MSGID.@L&MSGO#)'
+          AGO   .END
+.REQTEXT  ANOP
+          MXEMAC IS_REQ,TEXT,&TEXT
+                 DC    C&TEXT
+          AGO   .END
+.REQEND   ANOP
+&MSGID.@LEN      EQU   *-&MSGID._ID
+                 DS    0D
+&MSGID._OVERLAY   DS    0D
+          AIF (&MSGO# EQ 0).XOVER
+&I        SETA   1
+.LOVER    ANOP
+                 DC    &MSGOL(&I)
+&I        SETA   &I+1
+          AIF (&I LE &MSGO#).LOVER
+.XOVER    ANOP
+                 DC    A(0),A(0)
+          AGO   .END
+.DSECT    ANOP
+*
+*
+*
+MXEMSGDF_HDR     DSECT
+MXEMSGDF_HDR_IX  DS    A            Pointer to Index
+MXEMSGDF_HDR_MAX DS    A            Max index number
+MXEMSGDF_HDR@LEN EQU   *-MXEMSGDF_HDR
+*
+*
+*
+MXEMSGDF_IX      DSECT
+MXEMSGDF_IX_MSG  DS    A            Address of message text
+MXEMSGDF_IX_OVER DS    A            Address of message overlays
+MXEMSGDF_IX@LEN  EQU   *-MXEMSGDF_IX
+*
+*
+*
+MXEMSGDF_OL      DSECT
+MXEMSGDF_OL_OFF  DS    F            Offset from start of text
+MXEMSGDF_OL_LEN  DS    A            Length of overlay
+MXEMSGDF_OL@LEN  EQU   *-MXEMSGDF_OL
+*
+*
+*
+MXEMSGDF         DSECT
+MXEMSGDF_LEN     DS    H            Length of text
+MXEMSGDF_TXT     DS    0C           Message text
+MXEMSGDF@LEN     EQU   *-MXEMSGDF
+*
+*
+*
+.END      MEND

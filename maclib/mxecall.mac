@@ -1,0 +1,86 @@
+         MACRO                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Name       : MXECALL                                                         
+.*                                                                              
+.* Function   : The MXECALL macro provides a means of invoking a                
+.*            : defined subroutine (MXEPROC)                                    
+.*                                                                              
+.*                                                                              
+.* Syntax     : MXECALL procedure,                                              
+.*                      AMODE=31/64,                                            
+.*                      PARAM=(p1,p2...),                                       
+.*                      RC=field,                                               
+.*                      RSN=field,                                              
+.*                      OUTPUT=field                                            
+.*                      MF=(E,plist)                                            
+.*                                                                              
+.*                                                                              
+.* Keywords   :                                                                 
+.*              procedure name                                                  
+.*                is the subroutine name defined by the MXEPROC                 
+.*                macro                                                         
+.*                                                                              
+.*              RC=field                                                        
+.*                is the name of a optional fullword field to receive           
+.*                a copy of the contents of R15 on return                       
+.*                                                                              
+.*              PARAM=                                                          
+.*                is the optional list of parameters passed to the              
+.*                called routine. Note that the addresses generated             
+.*                in the parameter list is sensitive to the AMODE=              
+.*                setting.                                                      
+.*                                                                              
+.*              AMODE=31/64                                                     
+.*                is the expected AMODE of the called routine.                  
+.*                For AMODE=31, any parameters passed via PARAM=                
+.*                will consist of 31-bit addresses.                             
+.*                For AMODE=64, any parameters passed via PARAM=                
+.*                will consist of 64-bit addresses.                             
+.*                                                                              
+.*              RSN=field                                                       
+.*                is the name of a optional fullword field to receive           
+.*                a copy of the contents of R0 on return                        
+.*                                                                              
+.*              OUTPUT=field                                                    
+.*                is the name of a optional fullword field to receive a         
+.*                a copy of the contents of R1 on return                        
+.*                                                                              
+.*              MF=(E,plist)                                                    
+.*                is the name of a parameter list field.                        
+.*                Only required when the PARAM= keyword is specified            
+.*                                                                              
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Changes                                                                      
+.* 2019/01/09   RDS    Code Written                                             
+.*-------+---------+---------+---------+---------+---------+---------+-         
+&LABEL    MXECALL &PROC,&AMODE=31,&PARAM=,&RC=,&RSN=,&OUTPUT=,&MF=              
+          MXEMAC IN_LIST,AMODE,&AMODE,LIST=(31,64)                              
+          AIF (&SYSM_SEV GT 0).END                                              
+.XAMODE   ANOP                                                                  
+          AIF   ('&PARAM' EQ '').XPARAM                                         
+          MXEMAC IN_LIST,MF,&MF(1),LIST=(E)                                     
+          AIF (&SYSM_SEV GT 0).END                                              
+          MXEMAC VAR_LIST_&AMODE,&MF(2),LIST=&PARAM                             
+          MXEMAC LOAD_ADDR,R1,&MF(2)                                            
+.XPARAM   ANOP                                                                  
+          MXEMAC LOAD_ADDR_LONG,R15,&PROC                                       
+          AIF ('&AMODE' EQ '64').MODE64                                         
+.MODE31   ANOP                                                                  
+          OILH  R15,X'8000'                                                     
+          AGO   .BASSM                                                          
+.MODE64   ANOP                                                                  
+          NILH  R15,X'7FFF'                                                     
+          OILL  R15,X'0001'                                                     
+          AGO   .BASSM                                                          
+.BASSM    ANOP                                                                  
+          BASSM R14,R15                                                         
+          AIF ('&RC' EQ '').NORC                                                
+          ST    R15,&RC                                                         
+.NORC     ANOP                                                                  
+          AIF ('&RSN' EQ '').NORSN                                              
+          ST    R0,&RSN                                                         
+.NORSN    ANOP                                                                  
+          AIF ('&OUTPUT' EQ '').NOOUT                                           
+          ST    R1,&OUTPUT                                                      
+.NOOUT    ANOP                                                                  
+.END      MEND                                                                  

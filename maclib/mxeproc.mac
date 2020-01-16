@@ -1,0 +1,157 @@
+         MACRO                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Name       : MXEPROC                                                         
+.*                                                                              
+.* Function   : Subroutine entry and exit                                       
+.*                                                                              
+.*                                                                              
+.* Syntax     : MXEPROC BEGIN,                                                  
+.*                      DATAREG=(Rx),                                           
+.*                      AMODE=31/64                                             
+.*                                                                              
+.*            : MXEPROC RETURN                                                  
+.*                      RC=value,                                               
+.*                      RSN=value,                                              
+.*                      OUTPUT=value                                            
+.*                                                                              
+.*            : MXEPROC END                                                     
+.*                                                                              
+.* Keywords   :                                                                 
+.*              TYPE (BEGIN/RETURN/END)                                         
+.*                specifies the type of call                                    
+.*                  BEGIN   : Generates procedure prolog                        
+.*                  RETURN  : Return to caller and mark the start               
+.*                            of LTORG and constants                            
+.*                  END     : End of constants                                  
+.*                                                                              
+.*              DATAREG=                                                        
+.*                Specifies the data reg to be used during the                  
+.*                subroutine.                                                   
+.*                                                                              
+.*              AMODE=31/64                                                     
+.*                Specifies the expected AMODE when the procedure               
+.*                gains control. Affect the SYSSTATE value                      
+.*                                                                              
+.*              RC=field                                                        
+.*                is the name of a optional fullword field (or reg)             
+.*                that contains the contents of R15 on return                   
+.*                                                                              
+.*              RSN=field                                                       
+.*                is the name of a optional fullword field (or reg)             
+.*                that contains the contents of R0 on return                    
+.*                                                                              
+.*              OUTPUT=field                                                    
+.*                is the name of a optional fullword field (or reg)             
+.*                that contains the contents of R1 on return                    
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.* NOTES      :                                                                 
+.*              (o) This macro always PUSHs and POPs the USINGs between         
+.*                  the BEGIN and RETURN calls                                  
+.*                                                                              
+.*              (o) The label specified on the TYPE=BEGIN is used to            
+.*                  create a label suffixed with '_END' for the                 
+.*                  TYPE=RETURN call. This enables the DATAREG to have          
+.*                  a USING range.                                              
+.*                                                                              
+.*              (o) The label on the TYPE=BEGIN is doubleword aligned           
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Changes                                                                      
+.* 2019/01/09   RDS    Code Written                                             
+.*-------+---------+---------+---------+---------+---------+---------+-         
+&LABEL    MXEPROC &PROCTYPE,                                           +        
+               &AMODE=31,                                              +        
+               &RC=,                                                   +        
+               &RSN=,                                                  +        
+               &OUTPUT=,                                               +        
+               &DATAREG=(R12)                                                   
+          GBLC &MXEPROCN              Procedure name                            
+          GBLC &MXEPROCT              Procedure type                            
+          LCLC &TYPE                                                            
+                                                                                
+&TYPE     SETC '&PROCTYPE'                                                      
+          AIF ('&TYPE' NE '').XTYPE                                             
+&TYPE     SETC 'BEGIN'                                                          
+.XTYPE    ANOP                                                                  
+          MXEMAC IN_LIST,TYPE,&TYPE,LIST=(BEGIN,RETURN,END)                     
+          AIF (&SYSM_SEV GT 0).END                                              
+&KEYW     SETC  'TYPE'                                                          
+          AIF   ('&TYPE' EQ 'BEGIN').PROCBEG                                    
+          AIF   ('&TYPE' EQ 'RETURN').PROCRET                                   
+          AIF   ('&TYPE' EQ 'END').PROCEND                                      
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.PROCBEG  ANOP                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* MXEPROC TYPE=BEGIN PROCESSING                                                
+.*-------+---------+---------+---------+---------+---------+---------+-         
+          MXEMAC IS_REQ,LABEL,&LABEL                                            
+          MXEMAC IS_REQ,DATAREG,&DATAREG                                        
+          MXEMAC IN_LIST,AMODE,&AMODE,LIST=(31,64)                              
+&MXEPROCN SETC  '&LABEL'                                                        
+&LABEL    DS    0D                        Start of procedure                    
+          PUSH  USING                                                           
+          DROP  ,                         Drop everything                       
+          AIF ('&AMODE' EQ '31').MODE31                                         
+          AIF ('&AMODE' EQ '64').MODE64                                         
+.MODE31   ANOP                                                                  
+          SYSSTATE AMODE64=NO                                                   
+          AGO   .DOBAKR                                                         
+.MODE64   ANOP                                                                  
+          SYSSTATE AMODE64=YES                                                  
+          AGO   .DOBAKR                                                         
+.DOBAKR   ANOP                                                                  
+          BAKR  R14,R0                    Use the linkage stack                 
+          LARL  &DATAREG,&MXEPROCN._DATA                                        
+          USING (&MXEPROCN._DATA,&MXEPROCN._END),&DATAREG                       
+&MXEPROCT SETC  'BEGIN'                                                         
+          AGO   .FINISHED                                                       
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.PROCRET  ANOP                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* MXEPROC TYPE=RETURN PROCESSING                                               
+.*-------+---------+---------+---------+---------+---------+---------+-         
+          MXEMAC IN_LIST,MXEPROC,&MXEPROCT,LIST=(BEGIN)                         
+          AIF   ('&RC' EQ '').NORC                                              
+          MXEMAC LOAD_REG,R15,&RC                                               
+.NORC     ANOP                                                                  
+          AIF   ('&RSN' EQ '').NORSN                                            
+          MXEMAC LOAD_REG,R0,&RSN                                               
+.NORSN    ANOP                                                                  
+          AIF   ('&OUTPUT' EQ '').NOOUT                                         
+          MXEMAC LOAD_REG,R1,&OUTPUT                                            
+.NOOUT    ANOP                                                                  
+          PR                                                                    
+&MXEPROCN._DATA DS    0D                                                        
+&MXEPROCT SETC  'RETURN'                                                        
+          AGO   .FINISHED                                                       
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.PROCEND  ANOP                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* MXEPROC TYPE=END                                                             
+.*-------+---------+---------+---------+---------+---------+---------+-         
+          MXEMAC IN_LIST,MXEPROC,&MXEPROCT,LIST=(RETURN)                        
+          DS    0D                                                              
+          DC    FL8'0'                                                          
+          LTORG                                                                 
+&MXEPROCN._END DS    0D                                                         
+&MXEPROCN SETC ''                   CLEAR NAME AT SUBROUTINE EXIT               
+          POP   USING                                                           
+          AGO  .FINISHED                                                        
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Error messages                                                               
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.FINISHED ANOP                                                                  
+          MEND                                                                  

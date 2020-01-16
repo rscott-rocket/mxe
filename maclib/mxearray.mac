@@ -1,0 +1,332 @@
+          MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name     : MXEARRAY
+.*
+.* Function : Manage locked ARRAY using PLO CSTSTG
+.*
+.* Syntax   :
+.*
+.*          (o) MXEARRAY REQ=PUSH,
+.*                       INDEX=xxxx,
+.*                       STCK=xxxxx,
+.*                       ITEM=(Rx),
+.*                       ARRAY=xxxxx,
+.*                       MF=(E,mxearray_plist)
+.*
+.*            Adds the specified ITEM into the array indexed by STCK
+.*
+.*            Keywords :
+.*
+.*              STCK
+.*                The input 64-bit STCK used to index the ITEM
+.*
+.*              INDEX
+.*                The output 31-bit slot index used (or zero if
+.*                operation failed).
+.*
+.*              ITEM
+.*                The 64-bit address of the ITEM to be added to
+.*                the ARRAY. Supplied in a register.
+.*
+.*              ARRAY
+.*                The name of the ARRAY mapped by
+.*                the MXEARRAY structure
+.*
+.*              MF=(L,plist_name)
+.*              MF=(E,plist_name)
+.*                The execute and list forms of the macro
+.*
+.*          (o) MXEARRAY REQ=POP,
+.*                       INDEX=nnnn,
+.*                       STCK=xxxxx,
+.*                       ITEM=(Rx),
+.*                       ARRAY=xxxxx,
+.*                       MF=(E,mxearray_plist)
+.*
+.*            Remove specific item from the ARRAY
+.*
+.*              STCK
+.*                The input 64-bit STCK used to index the ITEM
+.*
+.*              INDEX
+.*                The input 31-bit slot index that was returned
+.*                on the associated REQ=PUSH operation.
+.*
+.*              ITEM
+.*                The register that will contain the 64-bit address
+.*                of the item removed from the array.
+.*
+.*              ARRAY
+.*                The name of the locked ARRAY mapped by
+.*                the MXEARRAY structure
+.*
+.*              MF=(L,plist_name)
+.*              MF=(E,plist_name)
+.*                The execute and list forms of the macro
+.*
+.* Notes    : (o) MXEARRAY services expect R13 to be the pointer to
+.*                a workarea that contains the MXEARRAY parameter
+.*                list.
+.*
+.*            (o) MXEARRAY services use the MXEARRAY structure which
+.*                is mapped by the "MXEARRAY DSECT=YES" form of this
+.*                macro.
+.*
+.*            (o) MXEARRAY always uses 64-bit addresses for the
+.*                ITEM address
+.*
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+&LABEL    MXEARRAY &REQ=,                                              +
+               &STCK=,                                                 +
+               &INDEX=,                                                +
+               &ITEM=,                                                 +
+               &ARRAY=,                                                +
+               &WORKREG=(R2),                                          +
+               &DSECT=NO,                                              +
+               &MF=
+          GBLC &SYSASCE              ASC ENVIRONMENT
+          LCLC &MFLABEL
+          SYSSTATE TEST
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the DSECT= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC IN_LIST,DSECT,&DSECT,LIST=(YES,NO)
+          AIF   ('&DSECT' EQ 'YES').DSECT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the MF= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC IN_LIST,MF,&MF(1),LIST=(E,L)
+&MFLABEL  SETC  '&MF(2)'
+          AIF   ('&MF(1)' EQ 'L').MFLIST
+          MXEMAC IS_REQ,MF,&MF(2)
+.COMMPRO  ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Common prolog
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC REG_DENY,&WORKREG,REGS=(0,1.14,15)
+          MXEMAC IN_LIST,REQ,&REQ,LIST=(PUSH,POP)
+          MXEMAC IS_REQ,ARRAY,&ARRAY
+          MXEMAC IS_REQ,INDEX,&INDEX
+          MXEMAC IS_REQ,STCK,&STCK
+          MXEMAC IS_REQ,ITEM,&ITEM
+          PUSH  USING
+PL&SYSNDX USING MXEARRAYPL,&MF(2)
+          STMG  R15,R12,PL&SYSNDX..MXEARRAYPL_REGS Save regs
+          STAM  R15,R12,PL&SYSNDX..MXEARRAYPL_AR   Save ARs (in case)
+          MXEMAC LOAD_ADDR,R9,&ARRAY               Get ARRAY addr
+          STG   R9,PL&SYSNDX..MXEARRAYPL_ARRAY     Remember
+LL&SYSNDX USING MXEARRAY,R9
+          AIF   ('&REQ' EQ 'PUSH').REQPUSH
+          AIF   ('&REQ' EQ 'POP').REQPOP
+.REQPUSH  ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* PUSH element into ARRAY
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC ZERO,PL&SYSNDX..MXEARRAYPL_INDEX
+          MXEMAC LOAD_ADDR,R6,&ITEM         Item to be added
+          STG   R6,PL&SYSNDX..MXEARRAYPL_ITEM
+          MXEMAC LOAD_ADDR,R15,&STCK        STCK to use
+          MVC   PL&SYSNDX..MXEARRAYPL_STCK,0(R15)
+AH&SYSNDX DS    0H
+          LTG   R4,LL&SYSNDX..MXEARRAY_FREE
+          JZ    AT&SYSNDX                   No free slots
+          AGHI  R4,-1                       subtract
+          LTG   R0,LL&SYSNDX..MXEARRAY_MAX
+          JZ    AT&SYSNDX                   No slots
+          LAE   R7,LL&SYSNDX..MXEARRAY_SLOTS
+SL&SYSNDX USING MXEARRAYSL,R7
+          LGHI  R8,1                        First slot
+AL&SYSNDX DS    0H
+          CLC   SL&SYSNDX..MXEARRAYSL_STCK,=XL8'00'
+          JNE   AN&SYSNDX
+          LG    R2,LL&SYSNDX..MXEARRAY_LOCK Get count
+          LGR   R3,R2                       Copy it
+          AGHI  R3,1                        New count
+*-------+---------+---------+---------+---------+---------+---------+-
+* Register contents :
+* R2 : Old lock value
+* R3 : New lock value
+* R4 : New free slot count
+* R5 : ITEM address
+* R6 : STCK value
+* R7 : MXEARRAYSL
+* R9 : MXEARRAY
+*-------+---------+---------+---------+---------+---------+---------+-
+          LG    R6,PL&SYSNDX..MXEARRAYPL_STCK
+          LG    R5,PL&SYSNDX..MXEARRAYPL_ITEM
+          MXECSTST LOCK_ADDR=LL&SYSNDX..MXEARRAY_LOCK,                 +
+               LOCK_OLDDATA=(R2),                                      +
+               LOCK_NEWDATA=(R3),                                      +
+               DATA1_ADDR=LL&SYSNDX..MXEARRAY_FREE,                    +
+               DATA1_NEWDATA=(R4),                                     +
+               DATA2_ADDR=SL&SYSNDX..MXEARRAYSL_STCK,                  +
+               DATA2_NEWDATA=(R6),                                     +
+               DATA3_ADDR=SL&SYSNDX..MXEARRAYSL_ITEM,                  +
+               DATA3_NEWDATA=(R5),                                     +
+               WORKREG=(R2),                                           +
+               RETRY_LABEL=AH&SYSNDX,                                  +
+               MF=(E,PL&SYSNDX..MXEARRAYPL_MXECSTST)
+          ST    R8,PL&SYSNDX..MXEARRAYPL_INDEX
+          J     AT&SYSNDX
+AN&SYSNDX DS    0H
+          LAE   R7,MXEARRAYSL@LEN(,R7)
+          AGHI  R8,1
+          CLG   R8,LL&SYSNDX..MXEARRAY_MAX
+          JL    AL&SYSNDX
+AT&SYSNDX DS    0H
+          AGO  .COMMEPI
+.REQPOP   ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* POP element from ARRAY
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC ZERO,PL&SYSNDX..MXEARRAYPL_ITEM
+          MXEMAC LOAD_ADDR,R15,&INDEX       Index to use
+          MVC   PL&SYSNDX..MXEARRAYPL_INDEX,0(R15)
+          MXEMAC LOAD_ADDR,R15,&STCK        STCK to use
+          MVC   PL&SYSNDX..MXEARRAYPL_STCK,0(R15)
+          LTG   R0,LL&SYSNDX..MXEARRAY_MAX
+          JZ    DT&SYSNDX                   No slots
+DH&SYSNDX DS    0H
+          MXEMAC ZERO,PL&SYSNDX..MXEARRAYPL_ITEM
+          LT    R8,PL&SYSNDX..MXEARRAYPL_INDEX
+          JZ    DT&SYSNDX                   No index
+          AGHI  R8,-1                       based zero
+          MGHI  R8,MXEARRAYSL@LEN
+          LAE   R7,LL&SYSNDX..MXEARRAY_SLOTS
+          AGR   R7,R8
+SL&SYSNDX USING MXEARRAYSL,R7
+          LG    R2,LL&SYSNDX..MXEARRAY_LOCK Get count
+          LGR   R3,R2                       Copy it
+          AGHI  R3,1                        New count
+          CLC   PL&SYSNDX..MXEARRAYPL_STCK,SL&SYSNDX..MXEARRAYSL_STCK
+          JNE   DT&SYSNDX
+          MVC   PL&SYSNDX..MXEARRAYPL_ITEM,SL&SYSNDX..MXEARRAYSL_ITEM
+*-------+---------+---------+---------+---------+---------+---------+-
+* Register contents :
+* R2 : Old lock value
+* R3 : New lock value
+* R4 : New free slot count
+* R5 : ITEM address
+* R6 : STCK value
+* R7 : MXEARRAYSL
+* R9 : MXEARRAY
+*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC ZERO,(R5)
+          MXEMAC ZERO,(R6)
+          LTG   R4,LL&SYSNDX..MXEARRAY_FREE
+          AGHI  R4,1                        add to free count
+          MXECSTST LOCK_ADDR=LL&SYSNDX..MXEARRAY_LOCK,                 +
+               LOCK_OLDDATA=(R2),                                      +
+               LOCK_NEWDATA=(R3),                                      +
+               DATA1_ADDR=LL&SYSNDX..MXEARRAY_FREE,                    +
+               DATA1_NEWDATA=(R4),                                     +
+               DATA2_ADDR=SL&SYSNDX..MXEARRAYSL_STCK,                  +
+               DATA2_NEWDATA=(R6),                                     +
+               DATA3_ADDR=SL&SYSNDX..MXEARRAYSL_ITEM,                  +
+               DATA3_NEWDATA=(R5),                                     +
+               WORKREG=(R2),                                           +
+               RETRY_LABEL=DH&SYSNDX,                                  +
+               MF=(E,PL&SYSNDX..MXEARRAYPL_MXECSTST)
+          J     DT&SYSNDX
+DT&SYSNDX DS    0H
+          AGO  .COMMEPI
+.COMMEPI  ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Common EPILOG
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+          LMG   R15,R12,PL&SYSNDX..MXEARRAYPL_REGS restore regs
+          LAM   R15,R12,PL&SYSNDX..MXEARRAYPL_AR
+          AIF   ('&REQ' EQ 'PUSH_TAIL').COMMDROP
+          LG    &ITEM,PL&SYSNDX..MXEARRAYPL_ITEM
+          MVC  &INDEX,PL&SYSNDX..MXEARRAYPL_INDEX
+.COMMDROP ANOP
+          DROP  LL&SYSNDX
+          DROP  PL&SYSNDX
+          DROP  SL&SYSNDX
+          POP   USING
+          AGO   .DONE
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* MF=L
+.*-------+---------+---------+---------+---------+---------+---------+-
+.MFLIST   ANOP
+          DS    0D
+&MFLABEL  DS    XL(MXEARRAYPL@LEN)
+          DS    0D
+          AGO   .DONE
+.DSECT    ANOP
+MXEARRAY             DSECT
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEARRAY
+*
+* Function        : Locked ARRAY header control block
+*
+*                 : Must be followed by n*MXEARRAYSL entries
+*
+*                 : MXEARRAY_MAX and MXEARRAY_FREE should be primed
+*                   with the value "n" = number of array slots
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEARRAY_ID          DS   CL8               ARRAY eyecatcher
+MXEARRAY_VER         DS   X
+MXEARRAY@VER_CURRENT EQU  X'01'
+MXEARRAY_FLG1        DS   X
+MXEARRAY_FLG2        DS   X
+MXEARRAY_FLG3        DS   X
+MXEARRAY_LEN         DS   F
+MXEARRAY_MXEARRAY    MXEMAC ADDR_64         Self
+MXEARRAY_STCK        DS   XL8               Create time
+MXEARRAY_NAME        DS   CL8               ARRAY name (debug)
+MXEARRAY_LOCK        DS   FL8               Lock word
+MXEARRAY_MAX         DS   FL8               Max  slot count
+MXEARRAY_FREE        DS   FL8               Free slot count
+MXEARRAY_SLOTS       DS   0D                Start of slots
+MXEARRAY@LEN         EQU  *-MXEARRAY
+*
+*
+*
+MXEARRAYSL           DSECT
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEARRAYSL
+*
+* Function        : MXEARRAY slot
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEARRAYSL_STCK      DS    XL8              Stck for indexing (0=free)
+MXEARRAYSL_ITEM      MXEMAC ADDR_64         Item address
+MXEARRAYSL@LEN       EQU  *-MXEARRAYSL
+*
+*
+*
+MXEARRAYPL           DSECT
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEARRAYPL
+*
+* Function        : MXEARRAY parameter list
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEARRAYPL_ARRAY     MXEMAC ADDR_64         ARRAY address
+MXEARRAYPL_ITEM      MXEMAC ADDR_64         Item address
+MXEARRAYPL_STCK      DS    XL8              Stck
+MXEARRAYPL_INDEX     DS    F                Index
+MXEARRAYPL_RESV      DS    F                Reserved
+MXEARRAYPL_MXECSTST  DS    XL(MXECSTST@LEN) CSTSTG plist
+MXEARRAYPL_REGS      DS    XL(16*8)         Register saves
+MXEARRAYPL_AR        DS    XL(16*4)
+MXEARRAYPL_DUMMY     MXEMAC ADDR_64         Dummy field
+                     DS    0D
+MXEARRAYPL@LEN       EQU  *-MXEARRAYPL
+*
+*
+.DONE     ANOP
+          MEND

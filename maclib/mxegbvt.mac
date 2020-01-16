@@ -1,0 +1,160 @@
+          MACRO
+          MXEGBVT
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEGBVT
+*
+* Function        : MXE Global Vector Table
+*
+* Pointed to      : Address contined in token owned by MXESERV
+*
+* Location        : E-CSA Subpool 228 Key 2
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+MXEGBVT                 DSECT
+MXEGBVT_ID              DS    CL8      MXEGBVT eyecatcher
+MXEGBVT_VER             DS    X        MXEGBVT version
+MXEGBVT@VER_CURRENT     EQU   X'01'    ..MXEGBVT current version
+MXEGBVT_RESV_1          DS    X        Reseved fields
+MXEGBVT_RESV_2          DS    X        ..
+MXEGBVT_RESV_3          DS    X        ..
+MXEGBVT_LEN             DS    F        Length of MXEGBVT
+MXEGBVT_SP              DS    F        Subpool
+MXEGBVT@SP              EQU   228
+MXEGBVT_KEY             DS    F        Key
+MXEGBVT@KEY             EQU   2
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name/Token fields to publish MXEGBVT for callers - do NOT move
+*--------+---------+---------+---------+---------+---------+---------+-
+                        DS    0D
+MXEGBVT_TOKEN_NAME      DS    CL16     Name/token name
+MXEGBVT_TOKEN_TOKEN     DS    0CL16    Name/token token
+MXEGBVT_MXEGBVT         MXEMAC ADDR_64 Address of self
+MXEGBVT_STCK            DS    XL8      Created STCK
+*--------+---------+---------+---------+---------+---------+---------+-
+* Flags
+*--------+---------+---------+---------+---------+---------+---------+-
+                        DS    0D
+MXEGBVT_FLG             MXEMAC BIT_REF Alignment for OIL/NIL
+MXEGBVT_FLG1            DS    X        MXEGBVT Flag settings #1
+MXEGBVT@FLG1_INIT       EQU   X'80'    ..Product init performed
+MXEGBVT@FLG1_SHUTDOWN   EQU   X'40'    ..Server shutting down
+MXEGBVT@FLG1_STEPLIB    EQU   X'20'    ..Server uses STEPLIB
+MXEGBVT_FLG2            DS    X        MXEGBVT Flag settings #2
+MXEGBVT_FLG3            DS    X        MXEGBVT Flag settings #3
+MXEGBVT_FLG4            DS    X        MXEGBVT Flag settings #4
+*--------+---------+---------+---------+---------+---------+---------+-
+* SystemLX area
+*--------+---------+---------+---------+---------+---------+---------+-
+                        DS    0D
+MXEGBVT_SYSLX_LIST      DS    F        = 1
+MXEGBVT_SYSLX_SEQ       DS    F        System LX seqnum
+MXEGBVT_SYSLX           DS    F        System LX Number
+MXEGBVT_TOKEN_LIST      DS    F        =1
+MXEGBVT_TOKEN           DS    F        Token entry
+                        DS    0D
+MXEGBVT_MXESRVPC_PCNUM  DS    F        PC Numbers (0 = not installed)
+                        DS    A
+*--------+---------+---------+---------+---------+---------+---------+-
+* Addresses of common routines
+*--------+---------+---------+---------+---------+---------+---------+-
+                        DS    0D
+MXEGBVT_MXEINLPA        DS    A        LPA function pack
+MXEGBVT_MXECOMRC        DS    A        Common recovery EPA
+MXEGBVT_MXEEOTXR        DS    A        Generic EOT exit routine
+MXEGBVT_MXEMSGTB        DS    A        Message table
+MXEGBVT_MXESRBRQ        DS    A        SRB routine
+MXEGBVT_MXESRVPC        DS    A        System LX PC-ss EPA
+MXEGBVT_MXESRVRM        DS    A        Server ASID level RESMGR
+MXEGBVT_MXETMRXR        DS    A        Generic STIMERM exit
+MXEGBVT_XDC             DS    A        z/XDC
+MXEGBVT_ARR             DS    0A       Alias for MXEGBVT_ESTAE
+MXEGBVT_FRR             DS    0A       Alias for MXEGBVT_ESTAE
+MXEGBVT_ESTAE           DS    A        Active recovery pgm (MXE/XDC)
+                        DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* Bufferpools (mapped by MXEGBVT_BP DSECT)
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEGBVT_BPOOLS          DS    0D
+MXEGBVT_BPOOL_256       DS    XL(MXEGBVT_BP@LEN)
+MXEGBVT_BPOOL_512       DS    XL(MXEGBVT_BP@LEN)
+MXEGBVT_BPOOL_1K        DS    XL(MXEGBVT_BP@LEN)
+MXEGBVT_BPOOL_2K        DS    XL(MXEGBVT_BP@LEN)
+MXEGBVT_BPOOL_4K        DS    XL(MXEGBVT_BP@LEN)
+MXEGBVT@BPOOLS_SIZE     EQU   *-MXEGBVT_BPOOLS
+MXEGBVT@BPOOLS_NUM      EQU   MXEGBVT@BPOOLS_SIZE/MXEGBVT_BP@LEN
+                        DS    XL(MXEGBVT_BP@LEN)  Reserved
+                        DS    XL(MXEGBVT_BP@LEN)
+                        DS    XL(MXEGBVT_BP@LEN)
+                        DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* Cell pools (31-bit)
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEGBVT_MXETASK_CPID    DS    XL4      Generic task structure
+                        DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* Queues (serialised by MXEQUEUE macro (CSTSTG))
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEGBVT_LOGDATA_QUEUE   DS    XL(MXEQUEUE@LEN)
+                        DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* Misc pointers
+*--------+---------+---------+---------+---------+---------+---------+-
+                        DS    0D
+MXEGBVT_LOADLIB_DCB     DS    A        DCB address for LOAD/CSVDYLPA
+MXEGBVT_MXETASK_LOGDATA DS    A        MXETASK addr for LOGDATA
+MXEGBVT_CORID_ARRAY     DS    A        Address of CORID array
+*--------+---------+---------+---------+---------+---------+---------+-
+* Area reserved for expansion
+*--------+---------+---------+---------+---------+---------+---------+-
+                        DS    0D
+                        DS    XL512
+                        DS    0D
+MXEGBVT@LEN             EQU   *-MXEGBVT
+*
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+* Bufferpool mapping
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEGBVT_BP              DSECT
+MXEGBVT_BP_SIZE         DS    F        Max size of cell
+MXEGBVT_BP_RESV         DS    F
+MXEGBVT_BP_CPID         DS    XL8      Cell pool ID
+                        DS    0D
+MXEGBVT_BP@LEN          EQU   *-MXEGBVT_BP
+*
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+* CSECT component IDs (For MXEMAC SET_RSN processing)
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEID@CSECT_MXECLN00    EQU   X'0A00'
+MXEID@CSECT_MXECOMRC    EQU   X'0A01'
+MXEID@CSECT_MXEEOTXR    EQU   X'0A02'
+MXEID@CSECT_MXEINLPA    EQU   X'0A03'
+MXEID@CSECT_MXESRBRQ    EQU   X'0A04'
+MXEID@CSECT_MXESRVLD    EQU   X'0A05'
+MXEID@CSECT_MXESRVMN    EQU   X'0A06'
+MXEID@CSECT_MXESRVPC    EQU   X'0A07'
+MXEID@CSECT_MXESRVRM    EQU   X'0A08'
+MXEID@CSECT_MXETMRXR    EQU   X'0A09'
+*--------+---------+---------+---------+---------+---------+---------+-
+* Misc global equates
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEGBVT@ABEND_CODE      EQU   123      User abend code
+MXEGBVT@RSN_CSVQUERY    EQU   1        Unexpected rc from CSVQUERY
+MXEGBVT@RSN_CSVDYLPA    EQU   2        Unexpected rc from CSVDYLPA
+MXEGBVT@RSN_RESMGR      EQU   3        Unexpected rc from RESMGR
+MXEGBVT@RSN_ATTACH      EQU   4        Unexpected rc from ATTACH
+MXEGBVT@RSN_SUBTASK     EQU   5        Subtask early termination
+MXEGBVT@RSN_TIMER       EQU   6        STIMER error
+MXEGBVT@RSN_MXEGBVT     EQU   7        Bad MXEGBVT
+MXEGBVT@RSN_MXETASK     EQU   8        Bad MXETASK
+MXEGBVT@RSN_PPT         EQU   9        Bad PPT entry
+*
+*
+          MXECSTST DSECT=YES
+          MXEARRAY DSECT=YES
+          MXEQUEUE DSECT=YES
+          MEND

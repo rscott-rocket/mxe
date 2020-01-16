@@ -1,0 +1,100 @@
+          MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name       : MXETIMER
+.*
+.* Function   : Interface to STIMERM to manage subtask timers
+.*
+.*
+.* Syntax     : MXETIMER REQ=START,
+.*                       BINTVL=
+.*
+.*            : MXETIMER REQ=STOP
+.*
+.*
+.* Keywords   :
+.*              REQ=
+.*                START
+.*                  New timer established
+.*                STOP
+.*                  Cancel existing timer
+.*
+.*              BINTVL=
+.*                The timer duration in 1/100ths second (fullword)
+.*
+.* Note       : Macro assumes addressability to MXETIMER structure
+.*              and MXEGBVT.
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXETIMER &REQ=,&BINTVL=,&DSECT=NO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the DSECT= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC IN_LIST,DSECT,&DSECT,LIST=(YES,NO)
+          AIF   ('&DSECT' EQ 'YES').DSECT
+          MXEMAC IN_LIST,REQ,&REQ,LIST=(START,STOP)
+          AIF ('&REQ' EQ 'START').REQSTA
+          AIF ('&REQ' EQ 'STOP').REQSTO
+.REQSTA   ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* REQ=START to format the MXETIMER block and start the timer
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC IS_REQ,BINTVL,&BINTVL
+          MXEMAC INIT,MXETIMER,LENGTH==AL4(MXETIMER@LEN)
+          MXEMAC SET_ID,MXETIMER
+          LAE   R0,MXETIMER                      MXETIMER is the parm
+          ST    R0,MXETIMER_TIMER_PARM
+          MXEMAC LOAD_31,R0,MXEGBVT_MXETMRXR     STIMERM exit
+          STIMERM SET,                                                 +
+               ID=MXETIMER_TIMER_ID,                                   +
+               EXIT=(R0),                                              +
+               PARM=MXETIMER_TIMER_PARM,                               +
+               BINTVL=&BINTVL,                                         +
+               MF=(E,MXETIMER_STIMERM_PLIST)
+          AGO   .DONE
+.REQSTO   ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* REQ=STOP to format the MXETIMER block and start the timer
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC ZERO,MXETIMER_STIMERM_PLIST
+          DO    ,
+            DOEXIT (CLC,MXETIMER_TIMER_ID,EQ,=F'0')  Already gone ?
+            STIMERM CANCEL,                                            +
+               ID=MXETIMER_TIMER_ID,                                   +
+               MF=(E,MXETIMER_STIMERM_PLIST)
+            MXEMAC ZERO,MXETIMER_TIMER_ID        Clear timer ID
+          ENDDO
+          AGO   .DONE
+.DSECT    ANOP
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXETIMER
+*
+* Function        : MXE Generic TIMER parameter list
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETIMER               DSECT
+MXETIMER_ID            DS    CL8        MXETIMER eyecatcher
+MXETIMER_VER           DS    X          MXETIMER version
+MXETIMER@VER_CURRENT   EQU   X'01'      ..MXETIMER current version
+MXETIMER_RESV_1        DS    X          Reseved fields
+MXETIMER_RESV_2        DS    X          ..
+MXETIMER_RESV_3        DS    X          ..
+MXETIMER_LEN           DS    F          Length of MXETIMER
+MXETIMER_MXETIMER      MXEMAC ADDR_64   Address of self
+MXETIMER_STCK          DS    XL8        Created STCK
+MXETIMER_TIMER_PARM    DS    A          Timer exit parms
+MXETIMER_TIMER_ID      DS    XL4        Timer ID
+MXETIMER_ECB           DS    XL4        Time ECB
+                       DS    0D
+*--------+---------+---------+---------+---------+---------+---------+-
+* General work areas
+*--------+---------+---------+---------+---------+---------+---------+-
+MXETIMER_STIMERM_PLIST STIMERM SET,MF=L
+                       DS    0D
+MXETIMER@LEN           EQU   *-MXETIMER length of MXETIMER
+*
+*
+.DONE     ANOP
+          MEND

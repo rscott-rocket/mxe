@@ -1,0 +1,39 @@
+//ALLOC    PROC HLQ=,UNIT=
+//*
+//ALLOC    EXEC PGM=IEFBR14
+//*
+//ASM      DD  DSN=&HLQ..ASM,
+//         DISP=(NEW,CATLG),
+//         RECFM=FB,LRECL=80,BLKSIZE=0,
+//         SPACE=(27920,(50,25,25)),
+//         UNIT=&UNIT
+//*
+//MACLIB   DD  DSN=&HLQ..MACLIB,
+//         DISP=(NEW,CATLG),
+//         RECFM=FB,LRECL=80,BLKSIZE=0,
+//         SPACE=(27920,(50,25,25)),
+//         UNIT=&UNIT
+//*
+//OBJLIB   DD  DSN=&HLQ..OBJLIB,
+//         DISP=(NEW,CATLG),
+//         RECFM=FB,LRECL=80,BLKSIZE=0,
+//         SPACE=(27920,(50,25,25)),
+//         UNIT=&UNIT
+//*
+//SAMPLIB  DD  DSN=&HLQ..SAMPLIB,
+//         DISP=(NEW,CATLG),
+//         RECFM=FB,LRECL=80,BLKSIZE=0,
+//         SPACE=(27920,(50,25,25)),
+//         UNIT=&UNIT
+//*
+//SMXELOAD DD  DSN=&HLQ..SMXELOAD,
+//         DISP=(NEW,CATLG),
+//         RECFM=U,LRECL=0,BLKSIZE=32760,
+//         SPACE=(32760,(450,200)),
+//         DSNTYPE=LIBRARY,DSORG=PO,
+//         UNIT=&UNIT
+//*
+// PEND
+//*
+// EXEC ALLOC,HLQ='MXE',UNIT='SYSALLDA'
+//*

@@ -1,0 +1,368 @@
+          MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name            : MXEREQ
+.*
+.* Function        : MXE PC-routine interface
+.*
+.* Syntax          :
+.*                   MXEREQ REQ=GETTOKEN,
+.*                          TOKEN=token_field,
+.*                          RC=rc_field,
+.*                          MF=(E,plist)
+.*
+.*                   MXEREQ REQ=PUTTOKEN,
+.*                          TOKEN=token_field,
+.*                          RC=rc_field,
+.*                          MF=(E,plist)
+.*
+.*                   MXEREQ REQ=QUERY,
+.*                          TYPE=query_type,
+.*                          JOBNAME=target_jobname,
+.*                          ANSAREA=answer_buffer,
+.*                          ANSLEN=answer_buffer_length,
+.*                          RC=rc_field,
+.*                          RSN=rsn_field,
+.*                          OUTPUT=answer_buffer_bytes,
+.*                          MF=(E,plist)
+.*
+.*                   MXEREQ REQ=DATA,
+.*                          TOKEN=token_field,
+.*                          ANSAREA=answer_buffer,
+.*                          ANSLEN=answer_buffer_length,
+.*                          RC=rc_field,
+.*                          RSN=rsn_field,
+.*                          MF=(E,plist)
+.*
+.*                   MXEREQ REQ=LOGDATA,
+.*                          ANSAREA=answer_buffer,
+.*                          ANSLEN=answer_buffer_length,
+.*                          RC=rc_field,
+.*                          RSN=rsn_field,
+.*                          MF=(E,plist)
+.*
+.* Keywords        :
+.*
+.*
+.*                : REQ=
+.*                  The service requested :
+.*
+.*                    GETTOKEN
+.*                      Locate the MXE server token
+.*                    PUTTOKEN
+.*                      Publish the MXE server token
+.*                    QUERY
+.*                      Query data for target jobname
+.*                    DATA
+.*                      Send data to MXE server bufferpool on behalf
+.*                      of REQ=QUERY
+.*                    LOGDATA
+.*                      Send data payload to MXE server LOGDATA task
+.*
+.*                : TYPE=
+.*                  The name of a field containing the 8 byte query
+.*                  type padded to right with blanks.
+.*
+.*                : JOBNAME=
+.*                  The name of a field containing the 8 byte target
+.*                  jobname padded to right with blanks.
+.*
+.*                : TOKEN=
+.*                  The name of a field containing the 16 byte token.
+.*                  The use of TOKEN depends on request type :
+.*                    GETTOKEN  : Receiving field for MXE token
+.*                    PUTTOKEN  : Global MXE token value
+.*
+.*                : CORID=
+.*                    DATA      : Correlation token for originating
+.*                                REQ=QUERY
+.*
+.*                : ANSAREA=
+.*                  The answer address address
+.*
+.*                : ANSLEN=
+.*                  The answer address length
+.*
+.*                : RC=field
+.*                  The name of a optional fullword field (or reg)
+.*                  that contains the contents of R15 on return
+.*
+.*                : RSN=field
+.*                  The name of a optional fullword field (or reg)
+.*                  that contains the contents of R0 on return
+.*
+.*                : OUTPUT=field
+.*                  The name of a optional fullword field (or reg)
+.*                  that contains the contents of R1 on return. For
+.*                  REQ=QUERY this will contain the number of bytes
+.*                  written to the ANSAREA buffer.
+.*
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+&LABEL   MXEREQ &REQ=,                                                 +
+               &TYPE=,                                                 +
+               &JOBNAME=,                                              +
+               &CORID=,                                                +
+               &TOKEN=,                                                +
+               &ANSAREA=,                                              +
+               &ANSLEN=,                                               +
+               &RC=,                                                   +
+               &RSN=,                                                  +
+               &OUTPUT=,                                               +
+               &DSECT=NO,                                              +
+               &MF=
+         LCLC &MFLABEL
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the DSECT= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC IN_LIST,DSECT,&DSECT,LIST=(YES,NO)
+         AIF   ('&DSECT' EQ 'YES').DSECT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the MF= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC IN_LIST,MF,&MF(1),LIST=(E,L)
+         AIF (&SYSM_SEV GT 0).END
+         MXEMAC IS_REQ,MF,&MF(2)
+         AIF (&SYSM_SEV GT 0).END
+&MFLABEL SETC  '&MF(2)'
+         AIF   ('&MF(1)' EQ 'L').MFLIST
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Handle the requests
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC IN_LIST,REQ,&REQ,LIST=(GETTOKEN,PUTTOKEN,QUERY,        +
+               DATA,LOGDATA)
+         AIF (&SYSM_SEV GT 0).END
+A&SYSNDX USING MXEREQ,&MFLABEL
+         MXEMAC INIT,A&SYSNDX..MXEREQ,LENGTH==AL4(MXEREQ@LEN)
+         MXEMAC SET_ID,MXEREQ,A&SYSNDX..
+         MVI   A&SYSNDX..MXEREQ_REQ,MXEREQ@REQ_&REQ
+&LABEL   DS    0H
+         AIF   ('&REQ' EQ 'GETTOKEN').GETTOKEN
+         AIF   ('&REQ' EQ 'PUTTOKEN').PUTTOKEN
+         AIF   ('&REQ' EQ 'QUERY').COMMPRO
+         AIF   ('&REQ' EQ 'DATA').COMMPRO
+         AIF   ('&REQ' EQ 'LOGDATA').COMMPRO
+.COMMPRO ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Common Prolog
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC IS_REQ,ANSAREA,&ANSAREA
+         AIF (&SYSM_SEV GT 0).MFEDONE
+         MXEMAC IS_REQ,ANSLEN,&ANSLEN
+         AIF (&SYSM_SEV GT 0).MFEDONE
+         AIF   ('&TYPE' EQ '').XTYPE                 Copy any type
+         MXEMAC LOAD_ADDR,R15,&TYPE
+         MVC   A&SYSNDX..MXEREQ_TYPE,0(R15)
+.XTYPE   ANOP
+         AIF   ('&JOBNAME' EQ '').XJOBNAME           Copy any jobname
+         MXEMAC LOAD_ADDR,R15,&JOBNAME
+         MVC   A&SYSNDX..MXEREQ_JOBNAME,0(R15)
+.XJOBNAME ANOP
+         AIF   ('&CORID' EQ '').XCORID
+         MXEMAC LOAD_ADDR,R15,&CORID
+         MVC   A&SYSNDX..MXEREQ_CORID,0(R15)
+.XCORID  ANOP
+         MXEMAC LOAD_ADDR,R15,&ANSAREA
+         STG   R15,A&SYSNDX..MXEREQ_ANSAREA
+         MXEMAC LOAD_REG,R15,&ANSLEN
+         ST    R15,A&SYSNDX..MXEREQ_ANSLEN
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Attempt to issue the MXE PC-ss
+.* (o) Bypass if MXE shutdown
+.* (o) Bypass if MXE PC number is zero
+.* (o) Bypass if MXE PC sequence number is zero
+.* (o) Load PC sequence number in HH of R15
+.* (o) Load PC number in R14
+.* (o) Invoke and then remember R15, R0 and R1
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MVC   A&SYSNDX..MXEREQ_RETINFO_RC,=AL4(MXEEQU@RC_WARNING)
+         MVC   A&SYSNDX..MXEREQ_RETINFO_RSN,=AL4(MXEEQU@RSN_NOT_ACTIVE)
+         DO    ,
+           DOEXIT (TM,MXEGBVT_FLG1,MXEGBVT@FLG1_SHUTDOWN,O)
+           DOEXIT (LT,R14,MXEGBVT_MXESRVPC_PCNUM,Z)
+           LMH   R15,R15,MXEGBVT_SYSLX_SEQ
+           LAE   R1,A&SYSNDX..MXEREQ
+           PC    0(R14)
+           STM   R15,R1,A&SYSNDX..MXEREQ_RETINFO
+         ENDDO
+         AGO   .COMMEPI
+.COMMEPI ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Common epilog
+.*-------+---------+---------+---------+---------+---------+---------+-
+         LM    R15,R1,A&SYSNDX..MXEREQ_RETINFO
+         AIF   ('&RC' EQ '').NORC
+         ST    R15,&RC
+.NORC    ANOP
+         AIF   ('&RSN' EQ '').NORSN
+         ST    R0,&RSN
+.NORSN   ANOP
+         AIF   ('&OUTPUT' EQ '').NOOUT
+         ST    R1,&OUTPUT
+.NOOUT   ANOP
+         AGO   .MFEDONE
+.GETTOKEN ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Retrieve the name/token with the MXEGBVT address
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC GET_IEANTRT,R15
+         CALL  (15),(=AL4(IEANT_SYSTEM_LEVEL),                         +
+               =CL16'MXE.MXEGBVT',                                     +
+               &TOKEN,                                                 +
+               A&SYSNDX..MXEREQ_RETINFO_RC),                           +
+               MF=(E,A&SYSNDX..MXEREQ_PLIST)
+         LLGT  R15,A&SYSNDX..MXEREQ_RETINFO_RC
+         ST    R15,&RC
+         AGO   .MFEDONE
+.PUTTOKEN ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Create the name/token with the MXEGBVT address so that clients can
+.* discover the server anchor block
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC GET_IEANTCR,R15
+         CALL  (15),(=AL4(IEANT_SYSTEM_LEVEL),                         +
+               =CL16'MXE.MXEGBVT',                                     +
+               &TOKEN,                                                 +
+               =AL4(IEANT_NOPERSIST),                                  +
+               A&SYSNDX..MXEREQ_RETINFO_RC),                           +
+               MF=(E,A&SYSNDX..MXEREQ_PLIST)
+         LLGT  R15,A&SYSNDX..MXEREQ_RETINFO_RC
+         ST    R15,&RC
+         AGO   .MFEDONE
+.MFEDONE ANOP
+         DROP  A&SYSNDX
+         AGO   .END
+.MFLIST  ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* List form
+.*-------+---------+---------+---------+---------+---------+---------+-
+          DS       0D
+&MFLABEL  DS       XL(MXEREQ@LEN)
+          AGO   .END
+.DSECT    ANOP
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEREQ
+*
+* Function        : PC-ss Request Service Parameter list
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEREQ                  DSECT
+MXEREQ_ID               DS    CL8
+MXEREQ_VER              DS    X
+MXEREQ@VER_CURRENT      EQU   X'01'
+MXEREQ_FLG1             DS    X
+MXEREQ_FLG2             DS    X
+MXEREQ_REQ              DS    X                  Request type
+MXEREQ@REQ_QUERY        EQU   X'01'
+MXEREQ@REQ_DATA         EQU   X'02'
+MXEREQ@REQ_LOGDATA      EQU   X'03'
+MXEREQ@REQ_GETTOKEN     EQU   X'04'
+MXEREQ@REQ_PUTTOKEN     EQU   X'05'
+MXEREQ_LEN              DS    F                  Length
+MXEREQ_STCK             DS    XL8                Created STCK
+MXEREQ_MXEREQ           MXEMAC ADDR_64           Self
+MXEREQ_TYPE             DS    CL8                Query Type
+MXEREQ_JOBNAME          DS    CL8                Query jobname
+MXEREQ_CORID            DS    XL(MXEREQCI@LEN)
+MXEREQ_ANSAREA          MXEMAC ADDR_64           Answer area address
+MXEREQ_ANSLEN           DS    F                  Answer area length
+MXEREQ@ANSLEN_MAX       EQU   4096
+MXEREQ_RETINFO          DS    0F                 Return info
+MXEREQ_RETINFO_RC       DS    F
+MXEREQ_RETINFO_RSN      DS    F
+MXEREQ_RETINFO_OUTPUT   DS    F
+MXEREQ_MXEREQDA         MXEMAC ADDR_64           MXEREQDA
+MXEREQ_PLIST            DS    6A                 Plist area
+                        DS    0D
+MXEREQ@LEN              EQU   *-MXEREQ
+*
+*
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEREQCI
+*
+* Function        : Request correlation ID
+*
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEREQCI                DSECT
+MXEREQCI_STCK           DS    XL8                STCK
+MXEREQCI_INDEX          DS    F                  Index
+MXEREQCI_RESV           DS    F                  Reserved
+MXEREQCI@LEN            EQU   *-MXEREQCI
+*
+*
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEREQDA
+*
+* Function        : Data Payload header
+*
+*                 : Prefixes the actual payload at the beginning of
+*                   each cell in the buffer pool.
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEREQDA                DSECT
+MXEREQDA_ID             DS    CL8
+MXEREQDA_VER            DS    X                  Version
+MXEREQDA@VER_CURRENT    EQU   X'01'
+MXEREQDA_FLG1           DS    X
+MXEREQDA_FLG2           DS    X
+MXEREQDA_FLG3           DS    X
+MXEREQDA_LEN            DS    F                  Length
+MXEREQDA_STCK           DS    XL8                Create STCK
+MXEREQDA_MXEREQDA       MXEMAC ADDR_64           Self
+MXEREQDA_NEXT           MXEMAC ADDR_64           Next data (if any)
+MXEREQDA_DATA_OFF       DS    F                  Offset to payload
+MXEREQDA_DATA_LEN       DS    F                  Length of payload
+MXEREQDA_CPID           DS    XL8                64bit cell pool ID
+                        DS    0D
+MXEREQDA_DATA           DS    0X
+MXEREQDA@LEN            EQU   *-MXEREQDA
+MXEREQDA@DATA_OFF       EQU   MXEREQDA_DATA-MXEREQDA
+*
+*
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEREQPM
+*
+* Function        : SRB parameter block
+*
+* Location        : E-CSA subpool 228 key2
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEREQPM                DSECT
+MXEREQPM_ID             DS    CL8
+MXEREQPM_VER            DS    X                  Version
+MXEREQPM@VER_CURRENT    EQU   X'01'
+MXEREQPM_FLG1           DS    X
+MXEREQPM_FLG2           DS    X
+MXEREQPM_FLG3           DS    X
+MXEREQPM_LEN            DS    F                  Length
+MXEREQPM_STCK           DS    XL8                Create STCK
+MXEREQPM_MXEREQPM       MXEMAC ADDR_64           Self
+MXEREQPM_MXEGBVT        MXEMAC ADDR_64           MXEGBVT address
+MXEREQPM_TYPE           DS    CL8                Query type
+MXEREQPM_TOKEN          DS    0XL16
+MXEREQPM_TOKEN_ADDR     MXEMAC ADDR_64           Original MXEREQ addr
+MXEREQPM_TOKEN_SEQ      DS    XL8                Original MXEREQ STCK
+MXEREQPM_CORID          DS    XL(MXEREQCI@LEN)
+MXEREQPM_JOBNAME        DS    XL8                Target jobname
+MXEREQPM_STOKEN         DS    XL8                Target STOKEN
+MXEREQPM_ASCB           DS    A                  Target ASCB
+MXEREQPM_DIAG           DS    F                  Diagnostic word
+MXEREQPM_SCHEDULE_RC    DS    F                  RC from scheduler
+MXEREQPM_DISPATCH_RC    DS    F                  RC from dispatch
+MXEREQPM_RC             DS    F                  RC from SRB
+MXEREQPM_RSN            DS    F                  RSN from SRB
+                        DS    0D
+MXEREQPM@LEN            EQU   *-MXEREQPM
+MXEREQPM@SP             EQU   MXEGBVT@SP
+MXEREQPM@KEY            EQU   MXEGBVT@KEY
+*
+*
+*
+.END      ANOP
+          MEND

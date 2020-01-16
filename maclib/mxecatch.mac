@@ -1,0 +1,259 @@
+         MACRO                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Name       : MXECATCH                                                        
+.*                                                                              
+.* Function   : The MXECATCH macro provides basic recovery services             
+.*            : via ESTAE, ARR or FRR                                           
+.*                                                                              
+.*                                                                              
+.* Syntax     : MXECATCH ON,                                                    
+.*                       MODE=ESTAE/ARR/FRR,                                    
+.*                       FRR_PARM=(Rx),                                         
+.*                       RETRY=,                                                
+.*                       WORKREG=(Rx),                                          
+.*                       MF=(E,plist_field)                                     
+.*                                                                              
+.*            : MXECATCH OFF,                                                   
+.*                       LABEL=,                                                
+.*                       RC=field,                                              
+.*                       RSN=field,                                             
+.*                       MF=(E,plist_field)                                     
+.*                                                                              
+.*            : MXECATCH DSECT=YES                                              
+.*                                                                              
+.* Keywords   :                                                                 
+.*              operation (ON/OFF)                                              
+.*                Turn recovery ON or OFF                                       
+.*                                                                              
+.*              MODE=ESTAE/ARR                                                  
+.*                Recovery mode.                                                
+.*                                                                              
+.*                MODE=ESTAE will establish an ESTAE using the routine          
+.*                nominated by the ESTAE= keyword.                              
+.*                                                                              
+.*                MODE=ARR just places the address of the MXECATCH              
+.*                structure in the stack area using MSTA                        
+.*                                                                              
+.*                MODE=FRR places the address of the MXECATCH in the            
+.*                FRR parms address (R2 on entry to the SRB)                    
+.*                                                                              
+.*              RETRY=retrypoint                                                
+.*                The address where the retry logic will branch to if           
+.*                possible. Normally nominated by the LABEL= keyword            
+.*                of the MXECATCH OFF macro invocation                          
+.*                                                                              
+.*              FRR_PARM=(Rx)                                                   
+.*                Register containg the FRR parm address passed via             
+.*                R2 on entry to the SRB.                                       
+.*                                                                              
+.*              RC=field                                                        
+.*                A fullword field to contain the abend code if the             
+.*                recovery routine was invoked.                                 
+.*                                                                              
+.*              RSN=field                                                       
+.*                A fullword field to contain the abend reason if the           
+.*                recovery routine was invoked.                                 
+.*                                                                              
+.*              WORKREG=(Rx)                                                    
+.*                A register that can be used during macro processing           
+.*                                                                              
+.*              MF=(E,plist_field)                                              
+.*              MF=(L,plist_field)                                              
+.*                Execute and list forms of the macro. The plist_field          
+.*                is mapped by the MXECATCH DSECT generated by the              
+.*                DSECT=YES form.                                               
+.*                                                                              
+.*                                                                              
+.* Note       :                                                                 
+.*                                                                              
+.*              This macro provides extremly basic recovery functions           
+.*              and only attempts to copy PSW, abend code, reason               
+.*              code and register contents before branching to the              
+.*              retry address.                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Changes                                                                      
+.* 2019/01/09   RDS    Code Written                                             
+.*-------+---------+---------+---------+---------+---------+---------+-         
+         MXECATCH &OPER,                                               +        
+               &RETRY=,                                                +        
+               &LABEL=,                                                +        
+               &MODE=ESTAE,                                            +        
+               &FRR_PARM=,                                             +        
+               &WORKREG=(R2),                                          +        
+               &RC=,                                                   +        
+               &RSN=,                                                  +        
+               &DSECT=NO,                                              +        
+               &MF=                                                             
+          LCLC &MFLABEL                                                         
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Validate the DSECT= operand                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+         MXEMAC IN_LIST,DSECT,&DSECT,LIST=(YES,NO)                              
+         AIF   ('&DSECT' EQ 'YES').DSECT                                        
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Validate the MF= operand                                                     
+.*-------+---------+---------+---------+---------+---------+---------+-         
+         MXEMAC IN_LIST,MF,&MF(1),LIST=(E,L)                                    
+         MXEMAC IS_REQ,MF,&MF(2)                                                
+&MFLABEL SETC '&MF(2)'                                                          
+         AIF   ('&MF(1)' EQ 'L').MFLIST                                         
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Validate the MODE operand                                                    
+.*-------+---------+---------+---------+---------+---------+---------+-         
+         MXEMAC IN_LIST,MODE,&MODE,LIST=(ESTAE,ARR,FRR)                         
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Validate the OPER operand                                                    
+.*-------+---------+---------+---------+---------+---------+---------+-         
+         MXEMAC IN_LIST,OPER,&OPER,LIST=(ON,OFF)                                
+         AIF   ('&OPER' EQ 'OFF').RECOFF                                        
+.RECON   ANOP                                                                   
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Turn recovery ON                                                             
+.*-------+---------+---------+---------+---------+---------+---------+-         
+         MXEMAC IS_REQ,RETRY,&RETRY                                             
+&LABEL   DS    0H                                                               
+         USING MXECATCH,&MFLABEL                                                
+         MXEMAC INIT,MXECATCH,LENGTH==AL4(MXECATCH@LEN)                         
+         MXEMAC SET_ID,MXECATCH                                                 
+         MVI   MXECATCH_MODE,MXECATCH@MODE_&MODE                                
+         L     R1,=AL4(&RETRY)             Set to retry address                 
+         ST    R1,MXECATCH_RETRY                                                
+         AIF ('&MODE' NE 'FRR').DOMSTA                                          
+.DOFRR   ANOP                                                                   
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* FRR recovery involves putting MXECATCH address into the FRR parm             
+.* area in low storage - requires tempoary switch to Key0                       
+.* Address of FRR parm is passed to SRB in R2 on entry                          
+.*-------+---------+---------+---------+---------+---------+---------+-         
+         ST    &FRR_PARM,MXECATCH_FRR_PARM R2 on entry to SRB                   
+         MXEMAC ZERO,(&WORKREG)                                                 
+         IPK   &WORKREG                    Get execution key                    
+         ST    &WORKREG,MXECATCH_KEY                                            
+         IF (LTR,&WORKREG,&WORKREG,NZ)     not key0                             
+           SPKA  0(R0)                     Set to key0                          
+         ENDIF                                                                  
+         LAE   R1,MXECATCH                                                      
+         IF (LT,&WORKREG,MXECATCH_FRR_PARM,NZ)                                  
+           ST    R1,0(,&WORKREG)           Store as FRR Parm                    
+         ENDIF                                                                  
+         IF (LT,&WORKREG,MXECATCH_KEY,NZ)                                       
+           SPKA  0(R2)                     Set to prev key                      
+         ENDIF                                                                  
+         AGO   .SETINIT                                                         
+.DOMSTA  ANOP                                                                   
+         LAE   &WORKREG,MXECATCH                                                
+         MSTA  &WORKREG                    Store MXECATCH in stack              
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Establish ESTAEX                                                             
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.DOESTAE ANOP                                                                   
+         AIF ('&MODE' NE 'ESTAE').SETINIT                                       
+         MXEMAC LOAD_REG,&WORKREG,MXEGBVT_ESTAE                                 
+         IF (LTR,&WORKREG,&WORKREG,NZ)                                          
+           ESTAEX &WORKREG,CT,PARAM=MXECATCH,                          +        
+               MF=(E,MXECATCH_ESTAEX_PLIST)                                     
+         ENDIF                                                                  
+.SETINIT ANOP                                                                   
+         MXEMAC BIT_ON,MXECATCH@FLG1_INIT                                       
+         AGO .DONE                                                              
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.RECOFF  ANOP                                                                   
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Turn recovery OFF                                                            
+.*-------+---------+---------+---------+---------+---------+---------+-         
+&LABEL   DS   0H                                                                
+         USING MXECATCH,&MFLABEL                                                
+         DO    ,                                                                
+           MXEMAC VER_ID,MXECATCH                                               
+           DOEXIT (LTR,R15,R15,NZ)                                              
+           MXEMAC BIT_ON,MXECATCH@FLG1_OFF                                      
+           IF (TM,MXECATCH_FLG1,MXECATCH@FLG1_INIT,O)                           
+             MXEMAC ZERO,MXECATCH_RETRY                                         
+         AIF ('&MODE' NE 'ESTAE').OFFRECO                                       
+             ESTAEX 0,MF=(E,MXECATCH_ESTAEX_PLIST)                              
+.OFFRECO ANOP                                                                   
+             MXEMAC BIT_OFF,MXECATCH@FLG1_INIT                                  
+           ENDIF                                                                
+           IF (TM,MXECATCH_FLG1,MXECATCH@FLG1_INVOKED,O)                        
+             LM    R15,R0,MXECATCH_RC_RSN                                       
+         AIF ('&RC' EQ '').NORC                                                 
+             ST    R15,&RC                                                      
+.NORC    ANOP                                                                   
+         AIF ('&RSN' EQ '').NORSN                                               
+             ST    R0,&RSN                                                      
+.NORSN   ANOP                                                                   
+           ENDIF                                                                
+         ENDDO ,                                                                
+         AGO .DONE                                                              
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.MFLIST  ANOP                                                                   
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Recovery List form                                                           
+.*-------+---------+---------+---------+---------+---------+---------+-         
+&MFLABEL DS    0D                                                               
+         DS    XL(MXECATCH@LEN)    Room for MXECATCH                            
+         DS    0D                                                               
+         AGO .DONE                                                              
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.DSECT   ANOP                                                                   
+MXECATCH              DSECT                                                     
+*--------+---------+---------+---------+---------+---------+---------+-         
+* Name            : MXECATCH                                                    
+*                                                                               
+* Function        : General recovery block                                      
+*                                                                               
+*--------+---------+---------+---------+---------+---------+---------+-         
+MXECATCH_ID           DS    CL8          MXECATCH eyecatcher                    
+MXECATCH_VER          DS    X            Version                                
+MXECATCH@VER_CURRENT  EQU   X'01'        ..Current version                      
+MXECATCH_MODE         DS    X            MXECATCH mode                          
+MXECATCH@MODE_ESTAE   EQU   X'01'        ..ESTAE                                
+MXECATCH@MODE_ARR     EQU   X'02'        ..ARR                                  
+MXECATCH@MODE_FRR     EQU   X'03'        ..FRR                                  
+MXECATCH_FLG1         DS    X            MXECATCH flag settings #1              
+MXECATCH@FLG1_INIT    EQU   X'80'        ..Recovery init ok                     
+MXECATCH@FLG1_INVOKED EQU   X'40'        ..Recovery invoked                     
+MXECATCH@FLG1_SDWA    EQU   X'20'        ..SDWA present                         
+MXECATCH@FLG1_OFF     EQU   X'10'        ..RECOVERY OFF                         
+MXECATCH_FLG2         DS    X            MXECATCH flag settings #2              
+MXECATCH_LEN          DS    F            Length of block                        
+MXECATCH_STCK         DS    XL8          Creation datetime                      
+MXECATCH_MXECATCH     DS    AD           Self                                   
+MXECATCH_RETRY        DS    A            Address of retry routine               
+MXECATCH_KEY          DS    XL4          Execution key (SRB)                    
+MXECATCH_FRR_PARM     DS    A            Address of FRR PARM                    
+                      DS    0D                                                  
+*--------+---------+---------+---------+---------+---------+---------+-         
+* Areas copied from SDWA when ESTAE invoked                                     
+*--------+---------+---------+---------+---------+---------+---------+-         
+MXECATCH_EC1          DS    XL8          PSW                                    
+MXECATCH_RC_RSN       DS    0FL8         RC+RSN area                            
+MXECATCH_ABCC         DS    F            Abend code                             
+MXECATCH_CRC          DS    F            Abend reason code                      
+MXECATCH_NXT1         DS    A            Address of next instruction            
+MXECATCH_FAIN         DS    XL12         Failing instruction                    
+MXECATCH_HASN         DS    XL2          Home address space                     
+MXECATCH_PASN         DS    XL2          Primary address space                  
+MXECATCH_SASN         DS    XL2          Secondary address space                
+                      DS    XL2                                                 
+                      DS    0D                                                  
+MXECATCH_TEA          DS    XL8                                                 
+MXECATCH_BEA          DS    XL8          Breaking event                         
+                      DS    0D                                                  
+MXECATCH_GR           DS    16AD        16 64-bit registers (0-15)              
+MXECATCH_AR           DS    16A         16 32-bit accesss registers             
+                      DS    0D                                                  
+*--------+---------+---------+---------+---------+---------+---------+-         
+* Misc areas used in recovery                                                   
+*--------+---------+---------+---------+---------+---------+---------+-         
+MXECATCH_ESTAEX_PLIST ESTAEX MF=L                                               
+                      DS    0D                                                  
+MXECATCH@LEN          EQU   *-MXECATCH                                          
+.DONE    ANOP                                                                   
+         MEND                                                                   

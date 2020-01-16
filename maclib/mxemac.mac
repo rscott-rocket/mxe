@@ -1,0 +1,1118 @@
+         MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name            : MXEMAC
+.*
+.* Description     : Macro function library
+.*
+.*                 : The MXEMAC contains a set of both "handy" macros
+.*                   and also some small convenience style macros that
+.*                   attempt to alleviate common typing error mistakes
+.*                   that can easily go undetected.
+.*
+.* Functions
+.*                 : ABEND
+.*
+.*                   Produce a user abend with the code specified by
+.*                   the MXEGBVT@ABEND_CODE equate with a reason code
+.*                   specified by the second operand
+.*
+.*                   Syntax:
+.*                     MXEMAC ABEND,reason
+.*
+.*                 : ADD
+.*
+.*                   Add two 32-bit values together and store result
+.*                   in the first operand location.
+.*                   Optional keyword of "LOCKED" makes the macro
+.*                   use compare and swap logic to serialize the
+.*                   update.
+.*
+.*                   Syntax:
+.*                     MXEMAC ADD,target,source(,LOCKED)
+.*
+.*                 : ADD_64
+.*
+.*                   Add two 64-bit values together and store result
+.*                   in the first operand location. Optional keyword
+.*                   of "LOCKED" make the macro use compare and swap
+.*                   logic to serielize the update.
+.*
+.*                   Syntax:
+.*                     MXEMAC ADD_64,target,source(,LOCKED)
+.*
+.*                 : ASC
+.*
+.*                   Change the address space control mode using SACF
+.*                   and also issue the SYSSTATE macro to reflect the
+.*                   correct mode.
+.*
+.*                   Syntax:
+.*                     MXEMAC ASC,PRIMARY
+.*                     MXEMAC ASC,AR
+.*
+.*                 : BLANK
+.*
+.*                   Set a target field to blanks using MVI and then
+.*                   a shuffled MVC. If the LENGTH is omitted, the
+.*                   macro uses the implicit length of the target
+.*                   field. Max length is 256 bytes.
+.*
+.*                   Syntax:
+.*                     MXEMAC BLANK,target(,LENGTH=equate)
+.*
+.*                 : BIT_ON
+.*
+.*                   Turn a bit ON in a flag byte using implicit name
+.*                   standards. For a flag byte called "FOOBAR_FLAG"
+.*                   each bit will be called "FOOBAR@FLAG_desc" using
+.*                   the "@" character instead of "_" to distinguish
+.*                   the bitmask definition.
+.*                   Using this standard, the macro can turn ON a
+.*                   bitmask by just referencing the bitmask name.
+.*
+.*                   For example
+.*                      "MXEMAC BIT_ON,FOOBAR@FLAG_TEST"
+.*                   will generate :
+.*                      "OI    FOOBAR_FLAG,FOOBAR@FLAG_TEST"
+.*
+.*                   Optional keyword of "LOCKED" uses OIL instead
+.*                   of "OI" and relies on the structure having a
+.*                   "MXEMAC BIT_REF" coded on the prior fullword
+.*                   boundary.
+.*
+.*                   Syntax:
+.*                     MXEMAC BIT_ON,byte@bit_label(,LOCKED)
+.*
+.*                 : BIT_OFF
+.*
+.*                   Turn a bit OFF in a flag byte using implicit name
+.*                   standards. For a flag byte called "FOOBAR_FLAG"
+.*                   each bit will be called "FOOBAR@FLAG_desc" using
+.*                   the "@" character instead of "_" to distinguish
+.*                   the bitmask definition.
+.*                   Using this standard, the macro can turn OFF a
+.*                   bitmask by just referencing the bitmask name.
+.*
+.*                   For example
+.*                      "MXEMAC BIT_OFF,FOOBAR@FLAG_TEST"
+.*                   will generate :
+.*                      "NI    FOOBAR_FLAG,255-FOOBAR@FLAG_TEST"
+.*
+.*                   Optional keyword of "LOCKED" uses NIL instead
+.*                   of "NI" and relies on the structure having a
+.*                   "MXEMAC BIT_REF" coded on the prior fullword
+.*                   boundary.
+.*
+.*                   Syntax:
+.*                     MXEMAC BIT_OFF,byte@bit_label(,LOCKED)
+.*
+.*                 : BIT_REF
+.*
+.*                   Generate a fullword "reference" label for OIL/NIL
+.*                   bitwise operations.
+.*                   Syntax:
+.*                     label MXEMAC BIT_REF
+.*
+.*                 : GET_IEANTCR
+.*
+.*                   Load the first operand register with the address
+.*                   of module IEANTCR (name/token create) from the CSS
+.*                   vector table. This saves having to linkedit the
+.*                   name/token linkage stub modules.
+.*
+.*                   Syntax:
+.*                     MXEMAC GET_IEANTCR,(Rx)
+.*
+.*                 : GET_IEANTRT
+.*
+.*                   Load the first operand register with the address
+.*                   of module IEANTRT (name/token retrieve) from the
+.*                   CSS vector table. This saves having to linkedit
+.*                   the name/token linkage stub modules.
+.*                   Syntax:
+.*                     MXEMAC GET_IEANTRT,(Rx)
+.*
+.*                 : GET_ADDR_KEY
+.*
+.*                   Extract the storahe key from the address passed
+.*                   in the second operand and place it in the field
+.*                   specified by the KEY= keyword.
+.*
+.*                   Syntax:
+.*                     MXEMAC GET_ADDR_KEY,address,KEY=target
+.*                     MXEMAC GET_ADDR_KEY,(Rx),KEY=target
+.*
+.*                 : GET_PSW_KEY
+.*
+.*                   Extract the caller execution key from the stack
+.*                   and store it in '000000k0' format in the fullword
+.*                   field specified by the KEY= keyword.
+.*
+.*                   Syntax:
+.*                     MXEMAC GET_PSW,KEY=target
+.*
+.*                 : GET_JOBNAME
+.*
+.*                   Extract the jobname from the ASSB for the ASCB
+.*                   pointed to by PSAAOLD and copy into the first
+.*                   operand location.
+.*
+.*                   Syntax:
+.*                     MXEMAC GET_JOBNAME,target
+.*
+.*                 : INIT
+.*
+.*                   Set a target field to hex zeroes using MVCL.
+.*                   If the LENGTH is omitted, the implicit length
+.*                   of the target field is used.
+.*
+.*                   Syntax:
+.*                     MXEMAC INIT,target,LENGTH=field
+.*
+.*                 : IN_LIST
+.*
+.*                   Verify that macro variable is one of the known
+.*                   values in a list.
+.*
+.*                   Syntax:
+.*                     MXEMAC IS_LIST,name,value,LIST=(var1,var2..)
+.*
+.*                 : LOAD_REG
+.*
+.*                   Load the first operand register with the contents
+.*                   of the second operand which can be either a field
+.*                   or a register. If the second operand is a register
+.*                   then LGR is used, if not then either "LG" or
+.*                   "LLGT" is used depending on the AMODE.
+.*
+.*                   Syntax:
+.*                     MXEMAC LOAD_REG,Rx,source
+.*
+.*                 : LOAD_31
+.*
+.*                   Load the first operand register with the contents
+.*                   of the second operand which can be either a field
+.*                   or a register. If the second operand is a register
+.*                   then LR is used, if not then LLGT is used.
+.*
+.*                   Syntax:
+.*                     MXEMAC LOAD_31,Rx,source
+.*
+.*                 : LOAD_64
+.*
+.*                   Load the first operand register with the contents
+.*                   of the second operand which can be either a field
+.*                   or a register. If the second operand is a register
+.*                   then LGR is used, if not then LG is used.
+.*
+.*                   Syntax:
+.*                     MXEMAC LOAD_64,Rx,source
+.*
+.*                 : LOAD_ADDR
+.*
+.*                   Load the first operand register with the address
+.*                   of the second operand which can be either a field
+.*                   or a register. If the second operand is a register
+.*                   then LGR is used, if not then LAE is used.
+.*
+.*                   Syntax:
+.*                     MXEMAC LOAD_ADDR,Rx,source
+.*
+.*                 : LOAD_ADDR_LONG
+.*
+.*                   Load the first operand register with the address
+.*                   of the second operand which can be either a field
+.*                   or a register. If the second operand is a register
+.*                   then LGR is used, if not then LARL is used.
+.*
+.*                   Syntax:
+.*                     MXEMAC LOAD_ADDR_LONG,Rx,source
+.*
+.*                 : MOVE_2ND_LEN
+.*
+.*                   Move the source data to the target area using the
+.*                   length of the source data. This is basically just
+.*                   a reversal of normal implicit length operations in
+.*                   an attempt to remove "magic" numbers from code.
+.*
+.*                   Syntax:
+.*                     MXEMAC MOVE_2ND_LEN,target,source
+.*
+.*                 : MOVE_DEST_KEY (MVCDK)
+.*
+.*                   Move the source data to the target area using the
+.*                   storage key of the destination target. The storage
+.*                   key is specified in the fullword pointed to by the
+.*                   KEY= keyword in x'000000k0' format. The data will
+.*                   be copied in chunks of 256 or smaller using MVCDK
+.*                   until the amount specified by the LENGTH= keyword
+.*                   is reached.
+.*
+.*                   Syntax:
+.*                     MXEMAC MOVE_DEST_EKY,target,source,
+.*                            KEY=field,LENGTH=field
+.*
+.*                 : MOVE_SRC_KEY (MVCSK)
+.*
+.*                   Move the source data to the target area using the
+.*                   storage key of the source. The storage key is
+.*                   specified in the fullword pointed to by the
+.*                   KEY= keyword in x'000000k0' format. The data will
+.*                   be copied in chunks of 256 or smaller using MVCSK
+.*                   until the amount specified by the LENGTH= keyword
+.*                   is reached.
+.*
+.*                   Syntax:
+.*                     MXEMAC MOVE_SRC_EKY,target,source,
+.*                            KEY=field,LENGTH=field
+.*
+.*                 : REG_DENY
+.*
+.*                   Disallow the target field from specifying a
+.*                   register that is in the REGS= list.
+.*
+.*                   Syntax:
+.*                     MXEMAC REG_DENY,target,REGS=(n,n,n...)
+.*
+.*                 : REG_EQU
+.*
+.*                   Generate register equates and other global
+.*                   constants.
+.*
+.*                   Syntax:
+.*                     MXEMAC REG_EQU
+.*
+.*                 : SET_RC
+.*                   Initialize the first operand with the equated
+.*                   return code value. The equates for the return
+.*                   codes are in the MXEEQU copybook
+.*
+.*                   Syntax:
+.*                     MXEMAC SET_RC,target,MXEEQU@RC_xxxxx
+.*
+.*                 : SET_RSN
+.*                   Initialize the first operand with the equated
+.*                   reason code value. The equates for the reason
+.*                   codes are in the MXEEQU copybook.
+.*
+.*                   Note that the first two bytes of the reason
+.*                   code field will be set to the compid of the
+.*                   current DSECT
+.*
+.*                   Syntax:
+.*                     MXEMAC SET_RSN,target,MXEEQU@RSN_xxxxx
+.*
+.*                 : SET_ID
+.*                   Initialize a control block with standard fields
+.*                   in the header, including eye-catcher, version,
+.*                   length, creation STCK and address of self.
+.*
+.*                   For a specification of "FOOBAR", the macro
+.*                   will use the following fields :
+.*
+.*                     FOOBAR_ID          DS    CL8
+.*                     FOOBAR_VER         DS    X
+.*                     FOOBAR@VER_CURRENT EQU   X'nn'
+.*                     FOOBAR_LEN         DS    F
+.*                     FOOBAR_FOOBAR      DS    AD
+.*                     FOOBAR_STCK        DS    XL8
+.*
+.*                   Syntax:
+.*                     MXEMAC SET_ID,target
+.*
+.*                 : SUB
+.*
+.*                   Subtract the second operand 32bit value from the
+.*                   first operand 32bit value and store the result
+.*                   in the first operand location.
+.*                   Optional keyword of "LOCKED" makes the macro
+.*                   use compare and swap logic to serialize the
+.*                   update.
+.*
+.*                   Syntax:
+.*                     MXEMAC SUB,target,source(,LOCKED)
+.*
+.*                 : SUB_64
+.*
+.*                   Subtract the second operand 64bit value from the
+.*                   first operand 64bit value and store the result
+.*                   in the first operand location.
+.*                   Optional keyword of "LOCKED" makes the macro
+.*                   use compare and swap logic to serialize the
+.*                   update.
+.*
+.*                   Syntax:
+.*                     MXEMAC SUB_64,target,source(,LOCKED)
+.*
+.*                 : VAR_LIST (aka VAR_LIST_31)
+.*
+.*                   Generate a list of 31bit addresses in the target
+.*                   operand from the specified LIST. The address of
+.*                   the last entry in the LIST will have the first
+.*                   bit turned ON.
+.*
+.*                   Syntax:
+.*                     MXEMAC VAR_LIST,LIST=(var1,var2,...)
+.*
+.*                 : VAR_LIST_64
+.*
+.*                   Generate a list of 64bit addresses in the target
+.*                   operand from the specified LIST. The address of
+.*                   the last entry in the LIST will NOT have the first
+.*                   bit turned ON.
+.*
+.*                   Syntax:
+.*                     MXEMAC VAR_LIST_64,LIST=(var1,var2,...)
+.*
+.*                 : VER_ID
+.*
+.*                   Verify the eye-catcher is correct in the target
+.*                   structure and set a non-zero return code in R15
+.*                   if invalid.
+.*
+.*                   Syntax:
+.*                     MXEMAC VER_ID,target
+.*
+.*                 : X2C
+.*
+.*                   Convert the hexadecimal data in the source field
+.*                   to printable character data using the LENGTH of
+.*                   the source data. Any module that uses X2C must
+.*                   have a single invocation of X2C_TABLE within the
+.*                   same CSECT.
+.*
+.*                   Syntax:
+.*                     MXEMAC X2C,target,source,LENGTH=field
+.*
+.*                 : X2C_TABLE
+.*
+.*                   Generate the 512-byte character translate table
+.*                   used by X2C.
+.*
+.*                   Syntax:
+.*                     MXEMAC X2C_TABLE
+.*
+.*                 : ZERO
+.*
+.*                   Place hex-zeroes in the target operand. If the
+.*                   target is in register format, the register will
+.*                   be cleared using "XGR". If the target is a field
+.*                   name, it will be cleared using "XC" for a max
+.*                   length of 256 bytes.
+.*
+.*                   Syntax:
+.*                     MXEMAC ZERO,target
+.*                     MXEMAC ZERO,(Rx)
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+&LABEL   MXEMAC &LENGTH=,&KEY=,&LIST=,                                 +
+               &REGS=(0,1,14,15),                                      +
+               &WORKREGS=(R2,R3)
+         GBLC  &SYSASCE
+         GBLC  &SYSAM64
+         GBLC  &MXECOMP
+         LCLA  &J,&JREGS,&APOS,&UPOS,&LBYTE,&CPYA,&NUMLIST,&OFFSET
+         LCLA  &ADDRL,&VL
+         LCLC  &KEYW,&REQ,&L,&ST,&AL,&CS,&FLD
+         LCLC  &BIT,&BYTE,&INS,&FLEN,&NAME
+         LCLC  &REGTEST,&REGLIST(16)
+         SYSSTATE TEST
+.*
+&REQ     SETC '&SYSLIST(1)'            Get the function name
+         AIF ('&REQ' EQ 'ADDR_64').REQ_ADDR_64 Generate 64 bit address
+         AIF ('&REQ' EQ 'BIT_REF').REQ_BIT_REF Generate bit ref
+         AIF ('&REQ' EQ 'GET_PSW_KEY').REQ_PSW_KEY Extract caller key
+         AIF ('&REQ' EQ 'GET_IEANTCR').REQ_IEANTCR macro assists
+         AIF ('&REQ' EQ 'GET_IEANTRT').REQ_IEANTRT
+         AIF ('&REQ' EQ 'REG_EQU').REQ_REG_EQU Register equates
+         AIF ('&REQ' EQ 'X2C_TABLE').REQ_X2C_TABLE
+         AIF (N'&SYSLIST LT 2).BADPARM
+         AIF ('&REQ' EQ 'ABEND').REQ_ABEND     Issue user abend
+         AIF ('&REQ' EQ 'ADD_64').REQ_ADD      ADD doublewords
+         AIF ('&REQ' EQ 'ADD').REQ_ADD         ADD fullwords
+         AIF ('&REQ' EQ 'AMODE').REQ_AMODE     Change AMODE
+         AIF ('&REQ' EQ 'ASC').REQ_ASC         Change ASC mode
+         AIF ('&REQ' EQ 'BIT_OFF').REQ_BIT_OFF Turn off bit
+         AIF ('&REQ' EQ 'BIT_ON').REQ_BIT_ON   Turn on bit
+         AIF ('&REQ' EQ 'BLANK').REQ_BLANK     Blank a field
+         AIF ('&REQ' EQ 'GET_ASCB').REQ_ASCB   1st ASCB match jobname
+         AIF ('&REQ' EQ 'GET_ADDR_KEY').REQ_ADDR_KEY Get address key
+         AIF ('&REQ' EQ 'GET_JOBNAME').REQ_JOBNAME Extract jobname
+         AIF ('&REQ' EQ 'INIT').REQ_INIT       Init storage
+         AIF ('&REQ' EQ 'IN_LIST').REQ_IN_LIST
+         AIF ('&REQ' EQ 'IS_REQ').REQ_IS_REQ
+         AIF ('&REQ' EQ 'LOAD_ADDR_LONG').REQ_LARL
+         AIF ('&REQ' EQ 'LOAD_ADDR').REQ_LA    Branch to LOAD ADDR
+         AIF ('&REQ' EQ 'LOAD_REG').REQ_L      Branch to LOAD REG (any)
+         AIF ('&REQ' EQ 'LOAD_31').REQ_L31     Branch to LOAD REG (31)
+         AIF ('&REQ' EQ 'LOAD_64').REQ_L64     Branch to LOAD REG (64)
+         AIF ('&REQ' EQ 'MOVE_DEST_KEY').REQ_MVCDK  MVCDK loop
+         AIF ('&REQ' EQ 'MOVE_SRC_KEY').REQ_MVCSK   MVCSK loop
+         AIF ('&REQ' EQ 'MOVE_2ND_LEN').REQ_MVC2L
+         AIF ('&REQ' EQ 'MVCDK').REQ_MVCDK     Nicknames
+         AIF ('&REQ' EQ 'MVCSK').REQ_MVCSK
+         AIF ('&REQ' EQ 'REG_DENY').REQ_REG_DENY  Deny registers
+         AIF ('&REQ' EQ 'SET_ID').REQ_SET_ID   Set control block ID
+         AIF ('&REQ' EQ 'SET_RC').REQ_SET_RC   Set RC
+         AIF ('&REQ' EQ 'SET_RSN').REQ_SET_RSN Set RSN
+         AIF ('&REQ' EQ 'SUB_64').REQ_SUB      SUB doublewords
+         AIF ('&REQ' EQ 'SUB').REQ_SUB         SUB fullwords
+         AIF ('&REQ' EQ 'VAR_LIST_31').REQ_VAR_LIST
+         AIF ('&REQ' EQ 'VAR_LIST_64').REQ_VAR_LIST_64
+         AIF ('&REQ' EQ 'VAR_LIST').REQ_VAR_LIST Build variable list
+         AIF ('&REQ' EQ 'VER_ID').REQ_VER_ID   Verify control block
+         AIF ('&REQ' EQ 'X2C').REQ_X2C         Hex to char
+         AIF ('&REQ' EQ 'ZERO_AR').REQ_ZERO_AR Zero ars
+         AIF ('&REQ' EQ 'ZERO').REQ_ZERO       Zero storage/regs
+         MNOTE 8,'Invalid MXEMAC function supplied &REQ'
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function ADDR_64
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ADDR_64 ANOP
+&LABEL         DS    0AD                         64-bit address
+&LABEL._64     DS    0AD
+&LABEL._HH     DS    XL4                         High half
+&LABEL._31     DS    0A                          31-bit address
+&LABEL._LH     DS    XL4                         Low half
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function ABEND (issue user abend)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ABEND ANOP
+         MXEMAC SET_RSN,(R15),&SYSLIST(2)        Get reason code
+         ABEND MXEGBVT@ABEND_CODE,REASON=(15),DUMP
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function ADD
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ADD ANOP
+&L       SETC  'L'
+&AL      SETC  'AL'
+&ST      SETC  'ST'
+&CS      SETC  'CS'
+         AGO   .ADD_COMMON
+.REQ_ADD_64 ANOP
+&L       SETC  'LG'
+&AL      SETC  'ALG'
+&ST      SETC  'STG'
+&CS      SETC  'CSG'
+         AGO   .ADD_COMMON
+.ADD_COMMON ANOP
+         AIF ('&SYSLIST(4)' EQ 'LOCK').ADD_LOCK
+         AIF ('&SYSLIST(4)' EQ 'LOCKED').ADD_LOCK
+         &L    R0,&SYSLIST(3)                  Load 2nd number
+         &AL   R0,&SYSLIST(2)                  Add 1st
+         &ST   R0,&SYSLIST(2)                  Store
+         AGO   .EXIT
+.ADD_LOCK ANOP
+         DO UNTIL=(EQ)
+           &L     R0,&SYSLIST(2)         Load existing value
+           &L     &REG,&SYSLIST(3)       Load new value
+           &AL    &REG,&SYSLIST(2)       Add values
+           &CS    R0,&REG,&SYSLIST(2)    Update field
+         ENDDO
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function AMODE (change amode)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_AMODE ANOP
+         MXEMAC IN_LIST,AMODE,&SYSLIST(2),LIST=(31,64)
+         AIF ('&SYSLIST(2)' EQ '64').AMODE64
+         AIF ('&SYSLIST(2)' EQ '31').AMODE31
+         AGO   .EXIT
+.AMODE64 ANOP
+         SAM64
+         SYSSTATE AMODE64=YES
+         AGO   .EXIT
+.AMODE31 ANOP
+         SAM31
+         SYSSTATE AMODE64=NO
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function ASC (change ASC)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ASC ANOP
+         AIF ('&SYSLIST(2)' EQ 'AR').ASCAR
+         AIF ('&SYSLIST(2)' EQ 'PRIMARY').ASCPRIM
+         AIF ('&SYSLIST(2)' EQ 'PRIM').ASCPRIM
+         AIF ('&SYSLIST(2)' EQ 'SECONDARY').ASCSEC
+         AIF ('&SYSLIST(2)' EQ 'SEC').ASCSEC
+         AGO   .BADASC
+.ASCAR   ANOP
+         SACF  512
+         SYSSTATE ASCENV=AR
+         AGO   .EXIT
+.ASCSEC  ANOP
+         SACF  256
+         SYSSTATE ASCENV=AR
+         AGO   .EXIT
+.ASCPRIM ANOP
+         SACF  0
+         SYSSTATE ASCENV=P
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function BLANK (blank a field)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_BLANK ANOP
+&FLEN    SETC  'L''&SYSLIST(2)'
+         AIF ('&LENGTH' EQ '').BLANK_GO
+&FLEN    SETC  '&LENGTH'
+.BLANK_GO ANOP
+         MVI   &SYSLIST(2),C' '
+         MVC   &SYSLIST(2)+1(&FLEN-1),&SYSLIST(2)
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function BIT_ON (turn on bit in flag using implicit names)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_BIT_ON ANOP
+&INS     SETC  'OI'
+&INS255  SETC  ''
+         AGO   .REQ_BIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function BIT_OFF (turn off bit in flag using implicit names)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_BIT_OFF ANOP
+&INS     SETC  'NI'
+&INS255  SETC  '255-'
+         AGO   .REQ_BIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function BIT common
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_BIT ANOP
+&BYTE    SETC  '&SYSLIST(2)'
+&BIT     SETC  '&SYSLIST(2)'
+&UPOS    SETA  INDEX('&BYTE','_')
+&APOS    SETA  INDEX('&BYTE','@')
+&LBYTE   SETA  K'&BYTE
+         AIF (&APOS EQ 0).BADMASK
+         AIF (&UPOS EQ 0).BIT_APOS
+         AIF (&UPOS LT &APOS).BIT_APOS
+.BIT_UPOS ANOP
+&BYTE    SETC  '&BIT'(1,&APOS-1).'_'.'&BIT'(&APOS+1,&UPOS-&APOS-1)
+         AGO   .BIT_OK
+.BIT_APOS ANOP
+&BYTE    SETC  '&BIT'(1,&APOS-1)
+.BIT_OK  ANOP
+         AIF (N'&SYSLIST EQ 3).BIT_LOCK
+         &INS  &BYTE,&INS255.(&BIT.)
+         AGO   .EXIT
+.BIT_LOCK ANOP
+         AIF ('&SYSLIST(3)' EQ 'LOCK').BIT_LOCK_OK
+         AIF ('&SYSLIST(3)' EQ 'LOCKED').BIT_LOCK_OK
+         MXEMAC IN_LIST,OPERAND,&SYSLIST(3),LIST=(LOCK,LOCKED)
+         AGO   .EXIT
+.BIT_LOCK_OK ANOP
+         &INS.L &BYTE,&INS255.(&BIT.),REF=&BYTE._REF
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function BIT_REF (generate BIT reference for OIL/NIL)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_BIT_REF ANOP
+&J       SETA  1
+&SEQ     SETA  1
+         AIF (N'&SYSLIST LT 2).BIT_REF_LOOP
+&SEQ     SETA  &SYSLIST(2)
+.BIT_REF_LOOP ANOP
+&LABEL.&SEQ._REF  DS    0F   Flag reference field for OIL/NIL
+&SEQ     SETA  &SEQ+1
+&J       SETA  &J+1
+         AIF (&J LE 4).BIT_REF_LOOP
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function GET_PSW_KEY (get caller key from stack)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ADDR_KEY ANOP
+         MXEMAC IS_REQ,KEY,&KEY
+         MXEMAC LOAD_ADDR,R1,&SYSLIST(2)
+         MXEMAC ZERO,(R0)              Zero the register
+         IVSK  R0,R1                   Get storage key (7-bits)
+         SRL   R0,3                    remove FP, R and C
+         SLL   R0,3
+         ST    R0,&KEY                 Store
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function GET_PSW_KEY (get caller key from stack)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_PSW_KEY ANOP
+         MXEMAC IS_REQ,KEY,&KEY
+         LHI   R1,1                    Want PSW
+         ESTA  R0,R1                   Get it from stack
+         N     R0,=X'00F00000'         Mask out bits
+         SRL   R0,16                   make it x'000000k0'
+         ST    R0,&KEY                 Store
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function GET_IEANTCR (macro assist for name/token create)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_IEANTCR ANOP
+         LLGT  R15,X'10'(,R0)          Macro assist form of IEANTRT
+         LLGT  R15,X'220'(,R15)
+         LLGT  R15,X'14'(,R15)
+         L     R15,X'04'(,R15)
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function GET_IEANTRT (macro assist for name/token retreive)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_IEANTRT ANOP
+         LLGT  R15,X'10'(,R0)          Macro assist form of IEANTRT
+         LLGT  R15,X'220'(,R15)
+         LLGT  R15,X'14'(,R15)
+         L     R15,X'08'(,R15)
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function IN_LIST (find macro value in list)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_IN_LIST ANOP
+         MXEMAC IS_REQ,LIST,&LIST
+&NUMLIST SETA  N'&LIST
+&J       SETA  1
+.LSTLOOP ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Loop through all the LIST values and see if the macro value is
+.* found
+.*-------+---------+---------+---------+---------+---------+---------+-
+&NAME    SETC  '&LIST(&J)'
+         AIF ('&SYSLIST(3)' EQ '&NAME').EXIT
+&J       SETA  &J+1
+         AIF   (&J LE &NUMLIST).LSTLOOP
+         MNOTE 8,'&SYSLIST(2) value &SYSLIST(3) not found in &LIST'
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function IS_REQ (ensure macro keyword is coded)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_IS_REQ ANOP
+         AIF ('&SYSLIST(3)' NE '').EXIT
+         MNOTE 8,'Required &SYSLIST(2) value not specified'
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function VAR_LIST (build variable list)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_VAR_LIST ANOP
+&ADDRL   SETA  4
+&VL      SETA  1
+&INS     SETC  'ST'
+         AGO   .VAR_LIST_COMM
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function VAR_LIST_64 (build variable list (64bit))
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_VAR_LIST_64 ANOP
+&ADDRL   SETA  8
+&VL      SETA  0
+&INS     SETC  'STG'
+         AGO   .VAR_LIST_COMM
+.VAR_LIST_COMM  ANOP
+&LABEL   DS    0H
+         MXEMAC IS_REQ,LIST,&LIST
+         MXEMAC LOAD_ADDR,R1,&SYSLIST(2)
+&NUMLIST SETA  N'&LIST
+&J       SETA  1
+.VARLOOP ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Loop through all the LIST variables and store their addresses
+.* in the first operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+&OFFSET  SETA  (&J-1)*&ADDRL
+&NAME    SETC  '&LIST(&J)'
+         MXEMAC REG_DENY,&NAME,REGS=(0,1)
+         MXEMAC LOAD_ADDR,R0,&NAME
+.STORPRM &INS  R0,&OFFSET.(,R1)     Store in VAR List
+&J       SETA  &J+1
+         AIF   (&J LE &NUMLIST).VARLOOP
+         AIF   (&VL EQ 0).EXIT
+         OI    &OFFSET.(R1),X'80'   Indicate last
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function INIT (Clear storage using MVCL)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_INIT ANOP
+         MXEMAC LOAD_ADDR,R14,&SYSLIST(2)      Target area
+         AIF ('&LENGTH' EQ '').INIT_NO_LEN
+&INIT_LEN SETC '&LENGTH'
+         AGO   .INIT_MVC
+.INIT_NO_LEN ANOP
+&INIT_LEN SETC '=AL4(L''&SYSLIST(2))'
+.INIT_MVC ANOP
+         MXEMAC LOAD_31,R15,&INIT_LEN          Get the length
+         XR    R0,R0                           Zero source
+         XR    R1,R1
+         MVCL  R14,R0                          Init to hexzeroes
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function GET_ASCB
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ASCB ANOP
+         LLGT  R15,CVTPTR(,R0)
+         LLGT  R15,CVTASVT-CVTMAP(,R15)
+         LAE   R1,ASVTFRST-ASVT(,R15)
+         LLGT  R0,ASVTMAXU-ASVT(,R15)
+         DO FROM=(R0)
+           IF (TM,0(R1),X'80',NO)               Not in use
+             LLGT  R15,0(,R1)                   Get ASCB
+             LLGT  R14,ASCBASSB-ASCB(,R15)      Get ASSB
+Q&SYSNDX     USING ASSB,R14
+             IF (CLC,Q&SYSNDX..ASSBJBNI,EQ,&SYSLIST(2)),OR,            +
+               (CLC,Q&SYSNDX..ASSBJBNS,EQ,&SYSLIST(2))
+               DOEXIT ,
+             ENDIF
+           ENDIF
+           LAE   R1,4(,R1)                      Next ASVT
+         ENDDO
+         IF (LTR,R0,R0,Z)
+           MXEMAC ZERO,(R1)                     Clear R1
+           LHI   R15,4                          Set RC=4
+         ELSE
+           LR    R1,R15
+           LHI   R15,0                          Set RC=0
+         ENDIF
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function GET_JOBNAME
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_JOBNAME ANOP
+         LLGT  R1,548(,R0)                     PSAAOLD
+         MXEMAC ZERO,(R15)
+         IF (ICM,R15,B'1111',172(R1),NZ),OR,   ASCBJBNI or ASCBJBNS    +
+               (ICM,R15,B'1111',176(R1),NZ)
+           MVC   &SYSLIST(2),0(R15)            Copy jobname
+         ENDIF
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function LOAD_31
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_L31 ANOP
+&INS     SETC  'LLGT'                          Set instruction
+&CPYA    SETA  0
+         AGO   .REQ_L_COMMON                   Common code
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function LOAD_64
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_L64 ANOP
+&INS     SETC  'LG'                            Set instruction
+&CPYA    SETA  0
+         AGO   .REQ_L_COMMON                   Common code
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function LOAD_REG
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_L   ANOP
+&INS     SETC  'LLGT'                          Set instruction
+&CPYA    SETA  0
+         AIF ('&SYSAM64' EQ 'NO').REQ_L_COMMON
+&INS     SETC  'LG'                            Set instruction
+         AGO   .REQ_L_COMMON                   Common code
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function LOAD_ADDR
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_LA  ANOP
+&INS     SETC  'LAE'                           Set instruction
+&CPYA    SETA  1
+         AGO   .REQ_L_COMMON                   Common code
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function LOAD_ADDR_LONG
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_LARL ANOP
+&INS     SETC  'LARL'                          Set instruction
+&CPYA    SETA  0
+         AGO   .REQ_L_COMMON                   Common code
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Common code for "load" style RX/RR instruction generation
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_L_COMMON  ANOP
+         AIF (N'&SYSLIST NE 3).BADPARM
+&REG     SETC  '&SYSLIST(2)'                   Register
+&FLD     SETC  '&SYSLIST(3)'                   Field
+         AIF ('&FLD'(1,1) EQ '(').REQ_L_R      Use register form
+&LABEL   &INS  &REG,&FLD                       Execute RX instruction
+         AGO   .EXIT
+.REQ_L_R ANOP
+&LABEL   LGR   &REG,&FLD                       Execute RR instruction
+         AIF   (&CPYA EQ 0).EXIT
+         AIF   ('&SYSASCE' EQ 'P').EXIT
+         CPYA  &REG,&FLD
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function MOVE_2ND_LEN
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_MVC2L ANOP
+         MVC   &SYSLIST(2).(L'&SYSLIST(3).),&SYSLIST(3)
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function MOVE_DEST_KEY (MVCDK)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_MVCDK ANOP
+&INS     SETC  'MVCDK'
+         AGO   .REQ_MOVE_COMMON
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function MOVE_SRC_KEY (MVCSK)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_MVCSK ANOP
+&INS     SETC  'MVCSK'
+         AGO   .REQ_MOVE_COMMON
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function MOVE_SRC_KEY (MVCSK)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_MOVE_COMMON ANOP
+         MXEMAC LOAD_31,R1,&KEY            Get the key
+         MXEMAC LOAD_ADDR,R2,&SYSLIST(2)   SET MOVE TO ADDRESS
+         MXEMAC LOAD_31,R15,&LENGTH        SET MOVE TO LENGTH
+         MXEMAC LOAD_ADDR,R14,&SYSLIST(3)  SET MOVE FROM ADDRES
+         DO WHILE=(LTR,R15,R15,NZ)
+           IF (CFI,R15,GT,256)
+             LHI   R0,256                  Set length to move
+             AHI   R0,-1                   -1
+             AHI   R15,-256                Adjust length
+           ELSE
+             LGR   R0,R15                  Copy length
+             AHI   R0,-1                   -1
+             XR    R15,R15                 Clear
+           ENDIF
+           &INS    0(R2),0(R14)            Move the data
+           LAE   R2,256(,R2)               Next 256 bit
+           LAE   R14,256(,R14)
+         ENDDO
+         AGO   .EXIT
+.REQ_SET_ID ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Set control block eye-catcher (and version, length and STCK)
+.* All control blocks have :
+.* (o) 8-byte eye-catcher
+.* (o) A single byte version field called xxxxxxxx_VER
+.* (o) A version equate called xxxxxxxx@VER_CURRENT
+.* (o) A fullword length field called xxxxxxxx_LEN
+.* (o) A length equate called xxxxxxxx@LEN
+.* (o) A STCK field called xxxxxxxx_STCK
+.* (o) A self-identifying field caled xxxxxxxx_xxxxxxxx (64-bit)
+.*-------+---------+---------+---------+---------+---------+---------+-
+&NAME    SETC  '&SYSLIST(2)'                   Name
+&PREF    SETC  ''
+         AIF (N'&SYSLIST EQ 2).SET_ID_NOPREF
+&PREF    SETC  '&SYSLIST(3)'                  Name
+.SET_ID_NOPREF ANOP
+         MVC   &PREF&NAME._ID,=CL8'&NAME'           Set eye-catcher
+         MVI   &PREF&NAME._VER,&NAME.@VER_CURRENT   Set version
+         MVC   &PREF&NAME._LEN,=AL4(&NAME.@LEN)     Set length
+         STCK  &PREF&NAME._STCK                     Datestamp of init
+         LAE   R0,&PREF&NAME                        Address of self
+         STG   R0,&PREF&NAME._&NAME
+         AGO   .EXIT
+.REQ_SET_RC ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Set return code
+.*-------+---------+---------+---------+---------+---------+---------+-
+         LGHI  R0,&SYSLIST(3)                  Get equate (rc)
+         AGO   .SET_RC_COMM
+.REQ_SET_RSN ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Set reason code
+.*-------+---------+---------+---------+---------+---------+---------+-
+         LLILL R0,&SYSLIST(3)                  Get equate (reason)
+         ICM   R0,B'1100',=Y(&MXECOMP)         Get compid
+         AGO   .SET_RC_COMM
+.SET_RC_COMM ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Set rc/rsn common code
+.*-------+---------+---------+---------+---------+---------+---------+-
+&FLD     SETC  '&SYSLIST(2)'
+         AIF   ('&FLD'(1,1) EQ '(').SET_RC_REG
+         STCM  R0,B'1111',&FLD
+         AGO   .EXIT
+.SET_RC_REG  ANOP
+         LR    &FLD,R0
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Verify eye-catcher
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_VER_ID ANOP
+&NAME    SETC  '&SYSLIST(2)'                   Name
+         IF (CLC,&NAME._ID,EQ,=CL8'&NAME')     If valid eye-catch
+           LHI   R15,0                         Set RC=0
+         ELSE
+           LHI   R15,8                         Else Set RC=8
+         ENDIF
+         AGO   .EXIT
+.REQ_REG_DENY ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Deny nominated registers from macro statements
+.*-------+---------+---------+---------+---------+---------+---------+-
+&J       SETA  1
+&JREGS   SETA  N'&REGS
+.REG_DENY_LOOP ANOP
+&REGTEST SETC  '(&REGS(&J))'
+         AIF   ('&KEYW' EQ '&REGTEST').BADREG
+&REGTEST SETC  'R&REGS(&J)'
+         AIF   ('&KEYW' EQ '&REGTEST').BADREG
+&REGTEST SETC  '(R&REGS(&J))'
+         AIF   ('&KEYW' EQ '&REGTEST').BADREG
+&J       SETA  &J+1
+         AIF   (&J LE &JREGS).REG_DENY_LOOP
+         AGO   .EXIT
+.REQ_REG_EQU ANOP
+*--------+---------+---------+---------+---------+---------+---------+-
+* Register and ASC equates
+*--------+---------+---------+---------+---------+---------+---------+-
+R0       EQU   0
+R1       EQU   1
+R2       EQU   2
+R3       EQU   3
+R4       EQU   4
+R5       EQU   5
+R6       EQU   6
+R7       EQU   7
+R8       EQU   8
+R9       EQU   9
+R10      EQU   10
+R11      EQU   11
+R12      EQU   12
+R13      EQU   13
+R14      EQU   14
+R15      EQU   15
+*
+AR0      EQU   0
+AR1      EQU   1
+AR2      EQU   2
+AR3      EQU   3
+AR4      EQU   4
+AR5      EQU   5
+AR6      EQU   6
+AR7      EQU   7
+AR8      EQU   8
+AR9      EQU   9
+AR10     EQU   10
+AR11     EQU   11
+AR12     EQU   12
+AR13     EQU   13
+AR14     EQU   14
+AR15     EQU   15
+*
+GR0      EQU   0
+GR1      EQU   1
+GR2      EQU   2
+GR3      EQU   3
+GR4      EQU   4
+GR5      EQU   5
+GR6      EQU   6
+GR7      EQU   7
+GR8      EQU   8
+GR9      EQU   9
+GR10     EQU   10
+GR11     EQU   11
+GR12     EQU   12
+GR13     EQU   13
+GR14     EQU   14
+GR15     EQU   15
+*
+AR@PRIM  EQU   0
+AR@SEC   EQU   1
+AR@HOME  EQU   2
+*
+KEY@ZERO EQU   0
+KEY@2    EQU   2
+*
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function SUB
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_SUB ANOP
+&L       SETC  'L'
+&SL      SETC  'SL'
+&ST      SETC  'ST'
+&CS      SETC  'CS'
+         AGO   .SUB_COMMON
+.REQ_SUB_64 ANOP
+&L       SETC  'LG'
+&SL      SETC  'SLG'
+&ST      SETC  'STG'
+&CS      SETC  'CSG'
+         AGO   .SUB_COMMON
+.SUB_COMMON ANOP
+         AIF ('&SYSLIST(4)' EQ 'LOCK').SUB_LOCK
+         AIF ('&SYSLIST(4)' EQ 'LOCKED').SUB_LOCK
+         &L    R0,&SYSLIST(2)                  Load 1st number
+         &SL   R0,&SYSLIST(3)                  Sub 2nd
+         &ST   R0,&SYSLIST(2)                  Store
+         AGO   .EXIT
+.SUB_LOCK ANOP
+         DO UNTIL=(EQ)
+           &L     R0,&SYSLIST(2)         Load existing value
+           &L     &REG,&SYSLIST(2)       Load new value
+           &SL    &REG,&SYSLIST(3)       Sub values
+           &CS    R0,&REG,&SYSLIST(2)    Update field
+         ENDDO
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function ZERO (Clear storage using XC)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ZERO ANOP
+&INS     SETC  'XGR'
+&FLD     SETC  '&SYSLIST(2)'
+         AIF ('&FLD'(1,1) EQ '(').ZERO_IT
+&INS     SETC  'XC'
+.ZERO_IT  ANOP
+         &INS  &SYSLIST(2),&SYSLIST(2)         Zero field
+         AGO   .EXIT
+.*
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function ZERO_AR  (Clear register using XGR)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ZERO_AR  ANOP
+         LAM   &SYSLIST(2),&SYSLIST(3),=16A(AR@PRIM)
+         AGO   .EXIT
+.REQ_X2C ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function X2C (translate hex to printable char using TROT)
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC REG_DENY,&WORKREGS
+         MXEMAC LOAD_ADDR,R14,&SYSLIST(2)        Copy target
+         MXEMAC LOAD_ADDR,&WORKREGS(1),&SYSLIST(3)         Copy source
+&XLEN    SETC  '&LENGTH'
+         AIF ('&XLEN' NE '').X2C_LEN
+&XLEN    SETC  '=AL4(L''&SYSLIST(3))'
+.X2C_LEN ANOP
+         MXEMAC LOAD_31,R15,&XLEN                Get the length
+         LGR   &WORKREGS(2),R15
+         MXEMAC ZERO,(R0)
+         LARL  R1,MXEMAC_X2C_TABLE               Point to table
+         TROT  R14,&WORKREGS(1)
+         AGO   .EXIT
+.*
+.*
+.REQ_X2C_TABLE ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function X2C_TABLE (Used by TROT in X2C)
+.*-------+---------+---------+---------+---------+---------+---------+-
+         DS    0D
+MXEMAC_X2C_TABLE DS   0XL512
+         DC    C'000102030405060708090A0B0C0D0E0F'
+         DC    C'101112131415161718191A1B1C1D1E1F'
+         DC    C'202122232425262728292A2B2C2D2E2F'
+         DC    C'303132333435363738393A3B3C3D3E3F'
+         DC    C'404142434445464748494A4B4C4D4E4F'
+         DC    C'505152535455565758595A5B5C5D5E5F'
+         DC    C'606162636465666768696A6B6C6D6E6F'
+         DC    C'707172737475767778797A7B7C7D7E7F'
+         DC    C'808182838485868788898A8B8C8D8E8F'
+         DC    C'909192939495969798999A9B9C9D9E9F'
+         DC    C'A0A1A2A3A4A5A6A7A8A9AAABACADAEAF'
+         DC    C'B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF'
+         DC    C'C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF'
+         DC    C'D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF'
+         DC    C'E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF'
+         DC    C'F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF'
+         AGO   .EXIT
+.*
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Error messages
+.*-------+---------+---------+---------+---------+---------+---------+-
+.BADMASK MNOTE 8,'Invalid bitmask value'
+         AGO   .EXIT
+.BADPARM MNOTE 8,'Invalid parameters passed to macro'
+         AGO   .EXIT
+.BADREG  MNOTE 8,'Register &KEYW denied by macro rules'
+         AGO   .EXIT
+.EXIT    ANOP
+         MEND

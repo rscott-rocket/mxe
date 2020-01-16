@@ -1,0 +1,293 @@
+          MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name     : MXEQUEUE
+.*
+.* Function : Manage linked list queue using PLO CSTSTG
+.*
+.* Syntax   :
+.*
+.*          (o) MXEQUEUE REQ=PUSH_TAIL,
+.*                       ITEM=xxxxx,
+.*                       QUEUE=xxxxx,
+.*                       NEXT_OFFSET=nn,
+.*                       MF=(E,mxequeue_plist)
+.*
+.*            Adds the specified ITEM to the TAIL of the QUEUE.
+.*
+.*            Keywords :
+.*
+.*              ITEM
+.*                The name (or register containing the address of)
+.*                the object to be added to the linked list queue.
+.*
+.*              NEXT_OFFSET
+.*                Specifies the literal value that is the offset
+.*                into the ITEM where the 64-bit address of the
+.*                "next" ITEM is located.
+.*
+.*              QUEUE
+.*                The name of the linked list queue mapped by
+.*                the MXEQUEUE structure
+.*
+.*              QUEUE_ALET
+.*                The ALET for the QUEUE and ITEMs if required
+.*
+.*              MF=(L,plist_name)
+.*              MF=(E,plist_name)
+.*                The execute and list forms of the macro
+.*
+.*          (o) MXEQUEUE REQ=POP_HEAD,
+.*                       ITEM=(Rx),
+.*                       QUEUE=xxxxx,
+.*                       NEXT_OFFSET=nn,
+.*                       MF=(E,mxequeue_plist)
+.*
+.*            Remove any item from the HEAD of the QUEUE and place
+.*            its address in the register specified by ITEM.
+.*
+.*              ITEM
+.*                The register that will contain the address of
+.*                the object removed from the head of the linked list
+.*                queue.
+.*
+.*              NEXT_OFFSET
+.*                Specifies the literal value that is the offset
+.*                into the ITEM where the 64-bit address of the
+.*                "next" ITEM is located.
+.*
+.*              QUEUE
+.*                The name of the linked list queue mapped by
+.*                the MXEQUEUE structure
+.*
+.*              QUEUE_ALET
+.*                The ALET for the QUEUE and ITEMs if required
+.*
+.*              MF=(L,plist_name)
+.*              MF=(E,plist_name)
+.*                The execute and list forms of the macro
+.*
+.* Notes    : (o) MXEQUEUE services expect R13 to be the pointer to
+.*                a workarea that contains the MXEQUEUE parameter
+.*                list.
+.*
+.*            (o) MXEQUEUE services use the MXEQUEUE structure which
+.*                is mapped by the "MXEQUEUE DSECT=YES" form of this
+.*                macro.
+.*
+.*            (o) MXEQUEUE always uses 64-bit addresses for the
+.*                ITEM address and NEXT_OFFSET field.
+.*
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+&LABEL    MXEQUEUE &REQ=,                                              +
+               &ITEM=,                                                 +
+               &NEXT_OFFSET=,                                          +
+               &QUEUE=,                                                +
+               &QUEUE_ALET=,                                           +
+               &WORKREG=(R2),                                          +
+               &DSECT=NO,                                              +
+               &MF=
+          GBLC &SYSASCE              ASC ENVIRONMENT
+          LCLC &MFLABEL
+          SYSSTATE TEST
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the DSECT= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC IN_LIST,DSECT,&DSECT,LIST=(YES,NO)
+          AIF   ('&DSECT' EQ 'YES').DSECT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the MF= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC IN_LIST,MF,&MF(1),LIST=(E,L)
+&MFLABEL  SETC  '&MF(2)'
+          AIF   ('&MF(1)' EQ 'L').MFLIST
+          MXEMAC IS_REQ,MF,&MF(2)
+.COMMPRO  ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Common prolog
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC REG_DENY,&WORKREG,REGS=(0,1.14,15)
+          MXEMAC IN_LIST,REQ,&REQ,LIST=(PUSH_TAIL,POP_HEAD)
+          MXEMAC IS_REQ,QUEUE,&QUEUE
+          MXEMAC IS_REQ,ITEM,&ITEM
+          MXEMAC IS_REQ,NEXT_OFFSET,&NEXT_OFFSET
+          PUSH  USING
+PL&SYSNDX USING MXEQUEUEPL,&MF(2)
+          STMG  R15,R12,PL&SYSNDX..MXEQUEUEPL_REGS Save regs
+          STAM  R15,R12,PL&SYSNDX..MXEQUEUEPL_AR   Save ARs (in case)
+          MXEMAC LOAD_ADDR,R9,&QUEUE               Get Queue addr
+          STG   R9,PL&SYSNDX..MXEQUEUEPL_QUEUE     Remember
+          STAM  R9,R9,PL&SYSNDX..MXEQUEUEPL_ALET   ..and alet
+&KEYW     SETC  'QUEUE_ALET'
+          AIF   ('&QUEUE_ALET' EQ '').XQALET
+          MVC   PL&SYSNDX..MXEQUEUEPL_ALET,&QUEUE_ALET
+.XQALET   ANOP
+LL&SYSNDX USING MXEQUEUE,R9
+          AIF   ('&REQ' EQ 'PUSH_TAIL').REQPUSHT
+          AIF   ('&REQ' EQ 'POP_HEAD').REQPOPH
+.REQPUSHT ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* PUSH element onto QUEUE tail
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMAC LOAD_ADDR,R6,&ITEM         Item to be added
+          STG   R6,PL&SYSNDX..MXEQUEUEPL_ITEM
+          LAM   R9,R9,PL&SYSNDX..MXEQUEUEPL_ALET
+AT&SYSNDX DS    0H
+          LG    R2,LL&SYSNDX..MXEQUEUE_LOCK Get count
+          LGR   R3,R2                       Copy it
+          AGHI  R3,1                        New count
+          LG    R4,LL&SYSNDX..MXEQUEUE_HEAD
+          LTGR  R4,R4                       Zero head of q ?
+          JNZ   P1&SYSNDX
+          LGR   R4,R6                      ..yes, set to us
+P1&SYSNDX DS    0H
+          LAM   AR4,AR4,PL&SYSNDX..MXEQUEUEPL_ALET
+          LAE   R7,PL&SYSNDX..MXEQUEUEPL_DUMMY Dummy address
+          LTG   R1,LL&SYSNDX..MXEQUEUE_TAIL    Any tail ?
+          JZ    P2&SYSNDX
+          LAM   AR1,AR1,PL&SYSNDX..MXEQUEUEPL_ALET
+          LAE   R7,&NEXT_OFFSET.(,R1)   Previous "next" pointer
+P2&SYSNDX DS    0H
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Register contents :
+.* R2 : Old lock value
+.* R3 : New lock value
+.* R4 : Head of the queue
+.* R6 : Tail of the queue
+.* R7 : Address of previous "next" address
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXECSTST LOCK_ADDR=LL&SYSNDX..MXEQUEUE_LOCK,                 +
+               LOCK_OLDDATA=(R2),                                      +
+               LOCK_NEWDATA=(R3),                                      +
+               DATA1_ADDR=LL&SYSNDX..MXEQUEUE_HEAD,                    +
+               DATA1_NEWDATA=(R4),                                     +
+               DATA2_ADDR=LL&SYSNDX..MXEQUEUE_TAIL,                    +
+               DATA2_NEWDATA=(R6),                                     +
+               DATA3_ADDR=(R7),                                        +
+               DATA3_NEWDATA=(R6),                                     +
+               WORKREG=(R2),                                           +
+               RETRY_LABEL=AT&SYSNDX,                                  +
+               MF=(E,PL&SYSNDX..MXEQUEUEPL_MXECSTST)
+          AGO  .COMMEPI
+.REQPOPH  ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* POP element from QUEUE head
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+          LAM   R9,R9,PL&SYSNDX..MXEQUEUEPL_ALET Any ALET
+PH&SYSNDX DS    0H
+          LTG   R6,LL&SYSNDX..MXEQUEUE_HEAD      Anything in queue ?
+          JZ    P2&SYSNDX
+          LAM   AR6,AR6,PL&SYSNDX..MXEQUEUEPL_ALET
+          LG    R2,LL&SYSNDX..MXEQUEUE_LOCK      Get lock contents
+          LGR   R3,R2                            Copy it
+          AGHI  R3,1                             New count
+          LG    R4,&NEXT_OFFSET.(,R6)            Get next
+          LAM   AR4,AR4,PL&SYSNDX..MXEQUEUEPL_ALET
+          LG    R8,LL&SYSNDX..MXEQUEUE_TAIL      Get the tail
+          CGR   R6,R8                            Tail is us ?
+          JNE   P1&SYSNDX                        No
+          XGR   R8,R8                            Clear tail
+P1&SYSNDX DS    0H
+          LAM   AR8,AR8,PL&SYSNDX..MXEQUEUEPL_ALET
+          LAE   R7,PL&SYSNDX..MXEQUEUEPL_DUMMY
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Register contents :
+.* R2 : Old lock value
+.* R3 : New lock value
+.* R4 : Head of the queue
+.* R8 : Tail of the queue
+.* R7 : Address of previous "next" address (or dummy)
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXECSTST LOCK_ADDR=LL&SYSNDX..MXEQUEUE_LOCK,                 +
+               LOCK_OLDDATA=(R2),                                      +
+               LOCK_NEWDATA=(R3),                                      +
+               DATA1_ADDR=LL&SYSNDX..MXEQUEUE_HEAD,                    +
+               DATA1_NEWDATA=(R4),                                     +
+               DATA2_ADDR=LL&SYSNDX..MXEQUEUE_TAIL,                    +
+               DATA2_NEWDATA=(R8),                                     +
+               DATA3_ADDR=(R7),                                        +
+               DATA3_NEWDATA=(R6),                                     +
+               WORKREG=(R2),                                           +
+               RETRY_LABEL=PH&SYSNDX,                                  +
+               MF=(E,PL&SYSNDX..MXEQUEUEPL_MXECSTST)
+P2&SYSNDX DS    0H
+          STG   R6,PL&SYSNDX..MXEQUEUEPL_ITEM
+          AGO   .COMMEPI
+.COMMEPI  ANOP
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Common EPILOG
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*-------+---------+---------+---------+---------+---------+---------+-
+          LMG   R15,R12,PL&SYSNDX..MXEQUEUEPL_REGS restore regs
+          LAM   R15,R12,PL&SYSNDX..MXEQUEUEPL_AR
+          AIF   ('&REQ' EQ 'PUSH_TAIL').COMMDROP
+          LG    &ITEM,PL&SYSNDX..MXEQUEUEPL_ITEM
+.COMMDROP ANOP
+          DROP  LL&SYSNDX
+          DROP  PL&SYSNDX
+          POP   USING
+          AGO   .DONE
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* MF=L
+.*-------+---------+---------+---------+---------+---------+---------+-
+.MFLIST   ANOP
+          DS    0D
+&MFLABEL  DS    XL(MXEQUEUEPL@LEN)
+          DS    0D
+          AGO   .DONE
+.DSECT    ANOP
+MXEQUEUE             DSECT
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEQUEUE
+*
+* Function        : Linked list queue control block
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEQUEUE_ID          DS   CL8               QUEUE eyecatcher
+MXEQUEUE_VER         DS   X
+MXEQUEUE@VER_CURRENT EQU  X'01'
+MXEQUEUE_FLG1        DS   X
+MXEQUEUE_FLG2        DS   X
+MXEQUEUE_FLG3        DS   X
+MXEQUEUE_LEN         DS   F
+MXEQUEUE_MXEQUEUE    MXEMAC ADDR_64         Self
+MXEQUEUE_STCK        DS   XL8               Create time
+MXEQUEUE_NAME        DS   CL8               QUEUE name (debug)
+MXEQUEUE_LOCK        DS   FL8               Lock word
+MXEQUEUE_HEAD        MXEMAC ADDR_64         Pointer to head
+MXEQUEUE_TAIL        MXEMAC ADDR_64         Pointer to tail
+MXEQUEUE@LEN         EQU  *-MXEQUEUE
+*
+*
+*
+MXEQUEUEPL           DSECT
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEQUEUEPL
+*
+* Function        : MXEQUEUE parameter list
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEQUEUEPL_QUEUE     MXEMAC ADDR_64         Queue address
+MXEQUEUEPL_ITEM      MXEMAC ADDR_64         Item address
+MXEQUEUEPL_ALET      DS    XL4              ALET for ITEM/QUEUE
+                     DS    0D
+MXEQUEUEPL_MXECSTST  DS    XL(MXECSTST@LEN) CSTSTG plist
+MXEQUEUEPL_REGS      DS    XL(16*8)         Register saves
+MXEQUEUEPL_AR        DS    XL(16*4)
+MXEQUEUEPL_DUMMY     MXEMAC ADDR_64         Dummy field
+                     DS    0D
+MXEQUEUEPL@LEN       EQU  *-MXEQUEUEPL
+*
+*
+.DONE     ANOP
+          MEND

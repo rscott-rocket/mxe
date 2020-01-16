@@ -1,0 +1,100 @@
+         MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name       : MXEMSG
+.*
+.* Function   : The MXEMSG builds a message on the output area
+.*            : from the skeleton in the MXE message table
+.*
+.*
+.* Syntax     : MXEMSG  num,
+.*                      PARAM=(p1,p2...),
+.*                      TYPE=WTO/PUTLINE,
+.*                      OUTPUT=field
+.*
+.*
+.* Keywords   :
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2020/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEMSG  &NUM,                                                +
+               &TYPE=WTO,                                              +
+               &PARAM=,                                                +
+               &OUTPUT=
+          MXEMAC IS_REQ,TYPE,&TYPE
+          MXEMAC IS_REQ,OUTPUT,&OUTPUT
+          MXEMAC IN_LIST,TYPE,&TYPE,LIST=(WTO,PUTLINE)
+&MSGTAB   SETC  'MXEGBVT_MXEMSGTB'
+          AIF ('&TYPE' EQ 'WTO').XMSGTAB
+&MSGTAB   SETC  '=V(MXEMSGTB)'
+.XMSGTAB  ANOP
+          LHI   R1,&NUM
+          MXEMAC LOAD_31,R15,&MSGTAB
+          USING MXEMSGDF_HDR,R15
+          DO    ,
+            DOEXIT (LTR,R1,R1,Z)                 Message <>0
+            DOEXIT (C,R1,GT,MXEMSGDF_HDR_MAX)
+            DOEXIT (LT,R15,MXEMSGDF_HDR_IX,Z)    First slot based 1
+            USING MXEMSGDF_IX,R15
+            AHI   R1,-1
+            SLL   R1,3                           x8
+            DOEXIT (LT,R15,0(R1,R15),Z)          Message address
+            USING MXEMSGDF,R15
+            MXEMAC ZERO,(R14)
+            DOEXIT (ICM,R14,B'0011',MXEMSGDF_LEN,Z)
+            MXEMAC LOAD_ADDR,R1,&OUTPUT
+            AIF   ('&TYPE' EQ 'WTO').WTOLEN
+            LR    R0,R14
+            AHI   R0,4
+            STCM  R0,B'0011',0(R1)               Store length
+            LAE   R1,2(,R1)
+            XC    0(2,R1),0(R1)                  Clear
+            LAE   R1,2(,R1)                      Start of data
+            AGO   .XLEN
+.WTOLEN     ANOP
+            STCM  R14,B'0011',0(R1)              Store length
+            LAE   R1,2(,R1)                      Start of data
+.XLEN       ANOP
+            LAE   R15,MXEMSGDF_TXT               Message text
+            DROP  R15
+            LR    R0,R14
+            DO FROM=(R0)
+              MVC   0(1,R1),0(R15)
+              LAE   R1,1(,R1)
+              LAE   R15,1(,R15)
+            ENDDO
+          ENDDO
+&NPRM     SETA N'&PARAM
+&CPRM     SETA 1
+          AIF (&NPRM EQ 0).XPRM
+          DO    ,
+.LPRM       ANOP
+            LHI   R1,&NUM
+            MXEMAC LOAD_31,R15,&MSGTAB
+            USING MXEMSGDF_HDR,R15
+            LLGT  R15,MXEMSGDF_HDR_IX
+            USING MXEMSGDF_IX,R15
+            AHI   R1,-1
+            SLL   R1,3                           x8
+            DOEXIT (LT,R15,4(R1,R15),Z)          Overlay address
+            USING MXEMSGDF_OL,R15
+            AHI   R15,8*(&CPRM-1)
+            MXEMAC LOAD_ADDR,R1,&OUTPUT
+            AHI   R1,2                           Bump past Len
+            AIF   ('&TYPE' EQ 'WTO').OVERLEN
+            AHI   R1,2                           Bump past xx
+.OVERLEN    ANOP
+            DOEXIT (LT,R0,MXEMSGDF_OL_LEN,Z)
+            MXEMAC LOAD_ADDR,R14,&PARAM(&CPRM)
+            AL    R1,MXEMSGDF_OL_OFF             Offset into data
+            DO FROM=(R0)
+              MVC   0(1,R1),0(R14)
+              LAE   R14,1(,R14)
+              LAE   R1,1(,R1)
+            ENDDO
+&CPRM       SETA &CPRM+1
+            AIF (&CPRM LE &NPRM).LPRM
+          ENDDO
+.XPRM     ANOP
+.END      MEND

@@ -1,0 +1,33 @@
+          MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name        MXEINLPA
+.*
+.* Function    Map/declare LPA modules
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+          MXEINLPA &DSECT=NO
+&TYPE     SETC  'DSECT'
+&DS       SETC  'DS'
+          AIF ('&DSECT' EQ 'YES').SECTION
+&TYPE     SETC  'CSECT'
+&DS       SETC  'DC'
+.SECTION  ANOP
+MXEINLPA             &TYPE
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEINLPA
+*
+* Function        : LPA Module pack
+*
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEINLPA_MXECOMRC    &DS   V(MXECOMRC)  Common Recovery routine
+MXEINLPA_MXEEOTXR    &DS   V(MXEEOTXR)  EOT exit routine
+MXEINLPA_MXEMSGTB    &DS   V(MXEMSGTB)  Message table
+MXEINLPA_MXESRBRQ    &DS   V(MXESRBRQ)  SRB routine
+MXEINLPA_MXESRVRM    &DS   V(MXESRVRM)  ASID level RESMGR routine
+MXEINLPA_MXETMRXR    &DS   V(MXETMRXR)  STIMER exit
+                     DS    0D
+MXEINLPA_END         EQU   *-MXEINLPA
+          MEND

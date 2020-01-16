@@ -1,0 +1,66 @@
+*--------+---------+---------+---------+---------+---------+---------+-
+* Name            : MXEEQU
+*
+* Function        : MXE Global Equates
+*
+* Note            : Included to all CSECTs by COPY in MXEMAIN
+*--------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+*--------+---------+---------+---------+---------+---------+---------+-
+* CSECT component IDs (For MXEMAC SET_RSN processing)
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEEQU@CSECT_MXECLN00   EQU   X'0A00'
+MXEEQU@CSECT_MXECOMRC   EQU   X'0A01'
+MXEEQU@CSECT_MXEEOTXR   EQU   X'0A02'
+MXEEQU@CSECT_MXEINLPA   EQU   X'0A03'
+MXEEQU@CSECT_MXESRBRQ   EQU   X'0A04'
+MXEEQU@CSECT_MXESRVLD   EQU   X'0A05'
+MXEEQU@CSECT_MXESRVMN   EQU   X'0A06'
+MXEEQU@CSECT_MXESRVPC   EQU   X'0A07'
+MXEEQU@CSECT_MXESRVRM   EQU   X'0A08'
+MXEEQU@CSECT_MXETMRXR   EQU   X'0A09'
+*--------+---------+---------+---------+---------+---------+---------+-
+* Return codes
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEEQU@RC_OK            EQU   0
+MXEEQU@RC_WARNING       EQU   4
+MXEEQU@RC_ERROR         EQU   8
+MXEEQU@RC_SEVERE        EQU   12
+*--------+---------+---------+---------+---------+---------+---------+-
+* Reason codes
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEEQU@RSN_NOT_ACTIVE   EQU   X'0401'
+MXEEQU@RSN_NOT_FOUND    EQU   X'0402'
+MXEEQU@RSN_EMPTY        EQU   X'0403'
+MXEEQU@RSN_NO_DATA      EQU   X'0404'
+*
+MXEEQU@RSN_BAD_ANSAREA  EQU   X'0801'
+MXEEQU@RSN_BAD_ANSLEN   EQU   X'0802'
+MXEEQU@RSN_BAD_TYPE     EQU   X'0803'
+MXEEQU@RSN_BAD_JOBNAME  EQU   X'0804'
+MXEEQU@RSN_BAD_REQ      EQU   X'0805'
+MXEEQU@RSN_BAD_TOKEN    EQU   X'0806'
+MXEEQU@RSN_BAD_LENGTH   EQU   X'0807'
+MXEEQU@RSN_BAD_KEY      EQU   X'0808'
+MXEEQU@RSN_BAD_CORID    EQU   X'0809'
+*
+MXEEQU@RSN_BAD_ENV      EQU   X'0C01'
+MXEEQU@RSN_CSVQUERY     EQU   X'0C02'  Unexpected rc from CSVQUERY
+MXEEQU@RSN_CSVDYLPA     EQU   X'0C03'  Unexpected rc from CSVDYLPA
+MXEEQU@RSN_RESMGR       EQU   X'0C04'  Unexpected rc from RESMGR
+MXEEQU@RSN_ATTACH       EQU   X'0C05'  Unexpected rc from ATTACH
+MXEEQU@RSN_SUBTASK      EQU   X'0C06'  Subtask early termination
+MXEEQU@RSN_TIMER        EQU   X'0C07'  STIMER error
+MXEEQU@RSN_MXEEQU       EQU   X'0C08'  Bad MXEEQU
+MXEEQU@RSN_MXETASK      EQU   X'0C09'  Bad MXETASK
+MXEEQU@RSN_PPT          EQU   X'0C0A'  Bad PPT entry
+MXEEQU@RSN_MXEGBVT      EQU   X'0C0B'  Bad MXEGBVT
+*--------+---------+---------+---------+---------+---------+---------+-
+* Misc global equates
+*--------+---------+---------+---------+---------+---------+---------+-
+MXEEQU@MAX_CORID        EQU   1024     Max concurrent CORIDs
+MXEEQU@ABEND_CODE       EQU   123      User abend code
+*
+*

@@ -1,0 +1,227 @@
+         MACRO
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Name            : MXECSTST
+.*
+.* Function        : Interface to PLO Compare And Swap and Triple Store
+.*
+.* Syntax          : MXECSTST LOCK_ADDR=fieldname,
+.*                            LOCK_OLDDATA=,
+.*                            LOCK_NEWDATA=,
+.*                            DATA1_ADDR=,
+.*                            DATA1_NEWDATA=,
+.*                            DATA2_ADDR=,
+.*                            DATA2_NEWDATA=,
+.*                            DATA3_ADDR=,
+.*                            DATA3_NEWDATA=,
+.*                            RETRY_LABEL=,
+.*                            WORKREG=(Rx),
+.*                            MF=(E,plistname)
+.*                            MF=(L,plistname)
+.*
+.* Keywords        :
+.*                  LOCK_ADDR=fieldname
+.*                    Fieldname is a doubleword numeric lock field
+.*                    that will be incremented by one by this macro
+.*
+.*                  LOCK_OLDDATA=value
+.*                    The existing value of the lock field.
+.*
+.*                  LOCK_NEWDATA=value
+.*                    The candidate new value of the lock field.
+.*
+.*                  DATA1_ADDR=address
+.*                    The address of the first field to be atomically
+.*                    updated if the PLO operation is successfull.
+.*
+.*                  DATA1_NEWDATA=value
+.*                    The 8-byte value that is to be placed at the
+.*                    address declared by the DATA1_ADDR keyword if
+.*                    the PLO operation is successfull.
+.*
+.*                  DATA2_ADDR=address
+.*                    The address of the second field to be atomically
+.*                    updated if the PLO operation is successfull.
+.*
+.*                  DATA2_NEWDATA=value
+.*                    The 8-byte value that is to be placed at the
+.*                    address declared by the DATA2_ADDR keyword if
+.*                    the PLO operation is successfull.
+.*
+.*                  DATA3_ADDR=address
+.*                    The address of the third field to be atomically
+.*                    updated if the PLO operation is successfull.
+.*
+.*                  DATA3_NEWDATA=value
+.*                    The 8-byte value that is to be placed at the
+.*                    address declared by the DATA3_ADDR keyword if
+.*                    the PLO operation is successfull.
+.*
+.*                  RETRY_LABEL=
+.*                    The address that will be branched to if the
+.*                    PLO operation is unsucessfull.
+.*
+.*                  WORKREG=(Rx)
+.*                    A register that can be used during macro
+.*                    processing
+.*
+.*                  MF=(E,plist_field)
+.*                  MF=(L,plist_field)
+.*                    Execute and list forms of the macro.
+.*                    The plist_field is mapped by the DSECT=YES form
+.*                    of the MXECSTST macro.
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Changes
+.* 2019/01/09   RDS    Code Written
+.*-------+---------+---------+---------+---------+---------+---------+-
+&LABEL   MXECSTST &LOCK_ADDR=,                                         +
+               &LOCK_OLDDATA=,                                         +
+               &LOCK_NEWDATA=,                                         +
+               &DATA1_ADDR=,                                           +
+               &DATA1_NEWDATA=,                                        +
+               &DATA2_ADDR=,                                           +
+               &DATA2_NEWDATA=,                                        +
+               &DATA3_ADDR=,                                           +
+               &DATA3_NEWDATA=,                                        +
+               &RETRY_LABEL=,                                          +
+               &WORKREG=(R2),                                          +
+               &DSECT=NO,                                              +
+               &MF=
+          LCLC &MFLABEL
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the DSECT= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC IN_LIST,DSECT,&DSECT,LIST=(YES,NO)
+         AIF   ('&DSECT' EQ 'YES').DSECT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate the MF= operand
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC IN_LIST,MF,&MF(1),LIST=(E,L)
+         MXEMAC IS_REQ,MF,&MF(2)
+&MFLABEL SETC  '&MF(2)'
+         AIF   ('&MF(1)' EQ 'L').MFLIST
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Validate parameters
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC IS_REQ,LOCK_ADDR,&LOCK_ADDR
+         MXEMAC IS_REQ,LOCK_OLDDATA,&LOCK_OLDDATA
+         MXEMAC IS_REQ,LOCK_NEWDATA,&LOCK_NEWDATA
+         MXEMAC IS_REQ,DATA1_ADDR,&DATA1_ADDR
+         MXEMAC IS_REQ,DATA1_NEWDATA,&DATA1_NEWDATA
+         MXEMAC IS_REQ,DATA2_ADDR,&DATA2_ADDR
+         MXEMAC IS_REQ,DATA2_NEWDATA,&DATA2_NEWDATA
+         MXEMAC IS_REQ,DATA3_ADDR,&DATA3_ADDR
+         MXEMAC IS_REQ,DATA3_NEWDATA,&DATA3_NEWDATA
+         MXEMAC REG_DENY,&WORKREG,(0,1,14,15)
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Populate the PLO parameter list
+.*-------+---------+---------+---------+---------+---------+---------+-
+&LABEL   DS    0H
+         LMH   R14,R1,=4A(0)                Clear HH
+         MXEMAC LOAD_ADDR,R15,&MFLABEL      Address Plist
+         USING MXECSTST,R15                 R15 --> MXECSTST
+         XC    0(MXECSTST@LEN,R15),0(R15)   Clear
+         MXEMAC ZERO,(R14)
+.*
+         MXEMAC LOAD_64,R14,&DATA1_NEWDATA Get DATA1_NEWDATA content
+         STG   R14,MXECSTST_OP3             Remember in plist
+.*
+         MXEMAC LOAD_ADDR,R14,&DATA1_ADDR   Get address of DATA1
+         STG   R14,MXECSTST_OP4_ADDR        Remember in plist
+         STAM  R14,R14,MXECSTST_OP4_ALET    ..with ALET
+.*
+         MXEMAC LOAD_64,R14,&DATA2_NEWDATA Get DATA2_NEWDATA content
+         STG   R14,MXECSTST_OP5             Remember in plist
+.*
+         MXEMAC LOAD_ADDR,R14,&DATA2_ADDR   Get address of DATA2
+         STG   R14,MXECSTST_OP6_ADDR        Remember in plist
+         STAM  R14,R14,MXECSTST_OP6_ALET    ..with ALET
+.*
+         MXEMAC LOAD_64,R14,&DATA3_NEWDATA Get DATA3_NEWDATA content
+         STG   R14,MXECSTST_OP7             Remember in plist
+.*
+         MXEMAC LOAD_ADDR,R14,&DATA3_ADDR   Get address of DATA3
+         STG   R14,MXECSTST_OP8_ADDR        Remember in plist
+         STAM  R14,R14,MXECSTST_OP8_ALET    ..with ALET
+.*
+         MXEMAC LOAD_64,R14,&LOCK_NEWDATA  Set LOCK NEWDATA content
+         STG   R14,MXECSTST_OP1_NEWDATA     Remember in plist
+.*
+         MXEMAC LOAD_64,R14,&LOCK_OLDDATA  Set LOCK OLDDATA content
+         STG   R14,MXECSTST_OP1_OLDDATA     Remember in plist
+.*
+         DROP  R15
+.*
+         MXEMAC LOAD_64,R15,&LOCK_NEWDATA  Set LOCK NEWDATA
+.*
+         MXEMAC LOAD_ADDR,R1,&LOCK_ADDR     R1 =  LOCK_ADDR
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*
+.* PLO CSTSTG regs at time of execution as follows
+.*
+.* Compare swap and triple store, it  will CS on a dword and
+.* updates three other dwords specfied via DATA1, DATA2, DATA3
+.* operands
+.*
+.*   R0  - function code
+.*   R1  - lock address (same as LOCK_ADDR)
+.*   R14 - n/a (set to old data anyway!)
+.*   R15 - n/a (set to new data anyway!)
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+         MXEMAC ZERO,&WORKREG
+         LLILL R0,21                        Set R0 TO FUNC=20 (CSTSTG)
+         PLO   R14,&LOCK_ADDR,&WORKREG,&MF(2)
+.*
+         AIF   ('&RETRY_LABEL' EQ '').EXIT
+.*
+         JNE   &RETRY_LABEL
+         AGO   .EXIT
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Generate storage for PLO plist
+.*-------+---------+---------+---------+---------+---------+---------+-
+.MFLIST  ANOP  ,
+&MFLABEL                 DS       0D
+&LABEL                   DS       XL(MXECSTST@LEN)
+         AGO   .EXIT
+.*
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Generate PLO plist dsect
+.*-------+---------+---------+---------+---------+---------+---------+-
+.*
+.DSECT   ANOP  ,
+.*
+.*
+.*
+MXECSTST                 DSECT
+*--------+---------+---------+---------+---------+---------+---------+-
+* MXECSTST
+* Maps the PLO parameter list for Compare And Swap and Triple Store
+* for 64-bit values
+*--------+---------+---------+---------+---------+---------+---------+-
+                         DS    2F
+MXECSTST_OP1_OLDDATA     DS    XL8       LOCK_OLDDATA
+                         DS    2F
+MXECSTST_OP1_NEWDATA     DS    XL8       LOCK_NEWDATA
+                         DS    6F
+MXECSTST_OP3             MXEMAC ADDR_64  DATA1_NEWDATA
+                         DS    F
+MXECSTST_OP4_ALET        DS    F         DATA1_ADDR ALET
+MXECSTST_OP4_ADDR        MXEMAC ADDR_64  DATA1_ADDR
+                         DS    2F
+MXECSTST_OP5             MXEMAC ADDR_64  DATA2_NEWDATA
+                         DS    F
+MXECSTST_OP6_ALET        DS    F         DATA2_ADDR_ALET
+MXECSTST_OP6_ADDR        MXEMAC ADDR_64  DATA2_ADDR
+                         DS    2F
+MXECSTST_OP7             MXEMAC ADDR_64  DATA3_NEWDATA
+                         DS    F
+MXECSTST_OP8_ALET        DS    F         DATA3_ADDR_ALET
+MXECSTST_OP8_ADDR        MXEMAC ADDR_64  DATA3_ADDR
+                         DS    0D
+MXECSTST@LEN             EQU   *-MXECSTST
+.*
+         AGO   .EXIT
+.EXIT    ANOP  ,
+         MEND

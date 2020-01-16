@@ -1,0 +1,214 @@
+         MACRO                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Name       : MXEMAIN                                                         
+.*                                                                              
+.* Function   : Mainline ENTRY and EXIT                                         
+.*                                                                              
+.*                                                                              
+.* Syntax     : MXEMAIN BEGIN,                                                  
+.*                      DATAREG=(Rx),                                           
+.*                      PARMS=(Rx),                                             
+.*                      AMODE=nn,                                               
+.*                      RMODE=nn,                                               
+.*                      BAKR=YES/NO,                                            
+.*                      ZERO_AR=YES/NO,                                         
+.*                      ZERO_HH=YES/NO                                          
+.*                                                                              
+.*            : MXEMAIN RETINFO,                                                
+.*                      RC=value,                                               
+.*                      RSN=value,                                              
+.*                      OUTPUT=value                                            
+.*                                                                              
+.*            : MXEMAIN RETURN                                                  
+.*                                                                              
+.*            : MXEMAIN END                                                     
+.*                                                                              
+.* Keywords   :                                                                 
+.*              TYPE (BEGIN/RETURN/RETINFO/END)                                 
+.*                specifies the type of call                                    
+.*                  BEGIN   : Generates module prolog                           
+.*                  RETINFO : Stores optional RC,RSN and OUTPUT in              
+.*                            floating point regs around any                    
+.*                            release of working storage.                       
+.*                  RETURN  : Return to caller and mark the start               
+.*                            of LTORG and constants                            
+.*                  END     : End of constants                                  
+.*                                                                              
+.*              DATAREG=(Rx)                                                    
+.*                Specifies the data reg to be used during the                  
+.*                mainline code                                                 
+.*                                                                              
+.*              PARMS=(Rx)                                                      
+.*                Specifies the reg to hold the contents of (R1)                
+.*                on entry. Used to safeguard R1 around any STORAGE             
+.*                OBTAINs.                                                      
+.*                                                                              
+.*              AMODE=nn                                                        
+.*                Specifies the AMODE of the CSECT                              
+.*                                                                              
+.*              RMODE=nn/ANY                                                    
+.*                Specifies the RMODE of the CSECT                              
+.*                                                                              
+.*              ZERO_HH=YES/NO                                                  
+.*                Specifies whether to zero the register high halves            
+.*                                                                              
+.*              ZERO_AR=YES/NO                                                  
+.*                Specifies whether to zero the access registers                
+.*                                                                              
+.*              BAKR=YES/NO                                                     
+.*                Specifies whether to use the linkage stack for                
+.*                entry/exit                                                    
+.*                                                                              
+.*              RC=field                                                        
+.*                is the name of a fullword field (or reg)                      
+.*                that contains the contents of R15 on return                   
+.*                                                                              
+.*              RSN=field                                                       
+.*                is the name of a optional fullword field (or reg)             
+.*                that contains the contents of R0 on return                    
+.*                                                                              
+.*              OUTPUT=field                                                    
+.*                is the name of a optional fullword field (or reg)             
+.*                that contains the contents of R1 on return                    
+.*                                                                              
+.*                                                                              
+.* NOTES      :                                                                 
+.*              (o) The label specified on the TYPE=BEGIN is used to            
+.*                  create a label suffixed with '_END' for the                 
+.*                  TYPE=RETURN call. This enables the DATAREG to have          
+.*                  a USING range.                                              
+.*                                                                              
+.*              (o) The label on the TYPE=BEGIN is doubleword aligned           
+.*                                                                              
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* Changes                                                                      
+.* 2019/01/09   RDS    Code Written                                             
+.*-------+---------+---------+---------+---------+---------+---------+-         
+&LABEL    MXEMAIN &MAINTYPE,                                           +        
+               &AMODE=31,                                              +        
+               &RMODE=ANY,                                             +        
+               &BAKR=YES,                                              +        
+               &PARMS=R2,                                              +        
+               &ZERO_HH=YES,                                           +        
+               &ZERO_AR=YES,                                           +        
+               &RC=,                                                   +        
+               &RSN=,                                                  +        
+               &OUTPUT=,                                               +        
+               &DATAREG=(R12)                                                   
+          GBLC &MXEMAINN                                                        
+          GBLC &MXEMAINT                                                        
+          GBLC &MXEBAKR                                                         
+          GBLC &MXECOMP                                                         
+          LCLC &TYPE                                                            
+&TYPE     SETC '&MAINTYPE'                                                      
+          AIF ('&TYPE' NE '').XTYPE                                             
+&TYPE     SETC 'BEGIN'                                                          
+.XTYPE    ANOP                                                                  
+          MXEMAC IN_LIST,TYPE,&TYPE,LIST=(BEGIN,RETINFO,RETURN,END)             
+          AIF (&SYSM_SEV GT 0).END                                              
+          AIF   ('&TYPE' EQ 'BEGIN').MAINBEG                                    
+          AIF   ('&TYPE' EQ 'RETURN').MAINRET                                   
+          AIF   ('&TYPE' EQ 'RETINFO').MAINRC                                   
+          AIF   ('&TYPE' EQ 'END').MAINEND                                      
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.MAINBEG  ANOP                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* MXEMAIN TYPE=BEGIN MAINESSING                                                
+.*-------+---------+---------+---------+---------+---------+---------+-         
+          MXEMAC IS_REQ,LABEL,&LABEL                                            
+          MXEMAC IS_REQ,DATAREG,&DATAREG                                        
+          MXEMAC IN_LIST,ZERO_HH,&ZERO_HH,LIST=(YES,NO)                         
+          MXEMAC IN_LIST,ZERO_AR,&ZERO_AR,LIST=(YES,NO)                         
+&MXEMAINN SETC  '&LABEL'                                                        
+          PUSH  PRINT                                                           
+          PRINT OFF                                                             
+          COPY  ASMMSP                  IBM Structured macros                   
+          COPY  IEABRC                  Relative branching                      
+          COPY  MXEEQU                  Global equates                          
+          ASMMREL ON                                                            
+          SYSSTATE OSREL=ZOSV2R2,ARCHLVL=2                                      
+          POP   PRINT                                                           
+&MXECOMP  SETC  'MXEEQU@CSECT_&LABEL'                                           
+&LABEL    CSECT ,                                                               
+&LABEL    AMODE &AMODE                                                          
+&LABEL    RMODE &AMODE                                                          
+          MODID ,                      Eye-catcher                              
+          AIF ('&BAKR' EQ 'NO').NOBAKR                                          
+          BAKR  R14,R0                 Use the linkage stack                    
+.NOBAKR   ANOP                                                                  
+          LARL  &DATAREG,&MXEMAINN._DATA                                        
+          USING (&MXEMAINN._DATA,&MXEMAINN._END),&DATAREG                       
+&KEYW     SETC  'ZERO_HH'                                                       
+          AIF ('&ZERO_HH' EQ 'NO').XZEROHH                                      
+          LMH   R0,R15,&MXEMAINN._REGS_ZERO     Zero HH                         
+.XZEROHH  ANOP                                                                  
+&KEYW     SETC  'ZERO_AR'                                                       
+          AIF ('&ZERO_AR' EQ 'NO').XZEROAR                                      
+          LAM   R0,R15,&MXEMAINN._REGS_ZERO     Zero ARs                        
+.XZEROAR  ANOP                                                                  
+          LGR   &PARMS,R1                       Copy parm reg                   
+&MXEMAINT SETC  'BEGIN'                                                         
+&MXEBAKR  SETC  '&BAKR'                                                         
+          AGO   .FINISHED                                                       
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.MAINRC   ANOP                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* MXEMAIN TYPE=RETINFO                                                         
+.*-------+---------+---------+---------+---------+---------+---------+-         
+          MXEMAC IN_LIST,MXEMAIN,&MXEMAINT,LIST=(BEGIN)                         
+          MXEMAC IS_REQ,RC,&RC                                                  
+          MXEMAC LOAD_REG,R15,&RC                                               
+          LDGR  R2,R15                 Copy to FPreg                            
+.NORC     ANOP                                                                  
+          AIF   ('&RSN' EQ '').NORSN                                            
+          MXEMAC LOAD_REG,R0,&RSN                                               
+          LDGR  R3,R0                  Copy to FPreg                            
+.NORSN    ANOP                                                                  
+          AIF   ('&OUTPUT' EQ '').NOOUT                                         
+          MXEMAC LOAD_REG,R1,&OUTPUT                                            
+          LDGR  R4,R1                  Copy to FPreg                            
+.NOOUT    ANOP                                                                  
+&MXEMAINT SETC  'RETINFO'                                                       
+          AGO   .FINISHED                                                       
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.MAINRET  ANOP                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* MXEMAIN TYPE=RETURN                                                          
+.*-------+---------+---------+---------+---------+---------+---------+-         
+          MXEMAC IN_LIST,MXEMAIN,&MXEMAINT,LIST=(RETINFO,BEGIN)                 
+          AIF   ('&MXEMAINT' EQ 'RETINFO').EFPREGS                              
+          AGO   .XFPREGS                                                        
+.EFPREGS  ANOP                                                                  
+          LGDR  R15,R2                                                          
+          LGDR  R0,R3                                                           
+          LGDR  R1,R4                                                           
+.XFPREGS  ANOP                                                                  
+          PR                                                                    
+&MXEMAINN._DATA DS    0D                                                        
+&MXEMAINT SETC  'RETURN'                                                        
+          AGO   .FINISHED                                                       
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.MAINEND  ANOP                                                                  
+.*-------+---------+---------+---------+---------+---------+---------+-         
+.* MXEMAIN TYPE=END                                                             
+.*-------+---------+---------+---------+---------+---------+---------+-         
+          MXEMAC IN_LIST,MXEMAIN,&MXEMAINT,LIST=(RETURN)                        
+          DS    0D                                                              
+&MXEMAINN._REGS_ZERO DC    16F'0'                Zeros for reg clear            
+          LTORG                                                                 
+&MXEMAINN._END DS    0D                                                         
+&MXEMAINN SETC ''                                                               
+          AGO  .FINISHED                                                        
+.*                                                                              
+.*                                                                              
+.*                                                                              
+.FINISHED ANOP                                                                  
+          MEND                                                                  
