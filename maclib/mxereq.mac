@@ -345,10 +345,7 @@ MXEREQPM_STCK           DS    XL8                Create STCK
 MXEREQPM_MXEREQPM       MXEMAC ADDR_64           Self
 MXEREQPM_MXEGBVT        MXEMAC ADDR_64           MXEGBVT address
 MXEREQPM_TYPE           DS    CL8                Query type
-MXEREQPM_TOKEN          DS    0XL16
-MXEREQPM_TOKEN_ADDR     MXEMAC ADDR_64           Original MXEREQ addr
-MXEREQPM_TOKEN_SEQ      DS    XL8                Original MXEREQ STCK
-MXEREQPM_CORID          DS    XL(MXEREQCI@LEN)
+MXEREQPM_CORID          DS    XL(MXEREQCI@LEN)   Correlation ID
 MXEREQPM_JOBNAME        DS    XL8                Target jobname
 MXEREQPM_STOKEN         DS    XL8                Target STOKEN
 MXEREQPM_ASCB           DS    A                  Target ASCB
