@@ -4,7 +4,8 @@ Sample z/OS synchronous cross memory server written in HLASM
 Strongly suggest installing on a test system only.
 
 To install :
-(1) Copy the MXEALLOC.txt member of the samplib directory to z/OS system, edit it and submit the JCL 
+
+(1) Copy the MXEALLOC.txt member of the samplib directory to z/OS system, edit it and submit the JCL
 (2) Copy the contents of the asm directory to the ASM dataset created in (1)
 (3) Copy the contents of the maclib directory to the MACLIB dataset created in (1)
 (4) Copy the contents of the samplib directory to the SAMPLIB dataset created in (1)
