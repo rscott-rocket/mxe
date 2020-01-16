@@ -133,13 +133,10 @@ CLNT USING MXEREQ,R8
                RC=WA_RETINFO_RC,                                       +
                RSN=WA_RETINFO_RSN
          WHEN (MXEREQ@REQ_LOGDATA)               "LOG" DATA
-*--------+---------+---------+---------+---------+---------+---------+-
-* Set the correlation ID for this request
-*--------+---------+---------+---------+---------+---------+---------+-
-           USING MXEREQCI,MXEREQ_CORID
+           USING MXEREQCI,MXEREQ_CORID           Set CORID = self
            MVC   MXEREQCI_STCK,MXEREQ_STCK
            LAE   R6,MXEREQ
-           LLGT  R9,MXEGBVT_CORID_ARRAY
+           LLGT  R9,MXEGBVT_CORID_ARRAY          Add to CORID array
 CORID      USING MXEARRAY,R9
            MXEARRAY REQ=PUSH,                                          +
                ITEM=(R6),                                              +
@@ -147,7 +144,7 @@ CORID      USING MXEARRAY,R9
                INDEX=MXEREQCI_INDEX,                                   +
                ARRAY=CORID.MXEARRAY,                                   +
                MF=(E,WA_MXEARRAY_PLIST)
-           MXECALL PROCESS_DATA_REQUEST,                               +
+           MXECALL PROCESS_DATA_REQUEST,         Perform DATA call     +
                RC=WA_RETINFO_RC,                                       +
                RSN=WA_RETINFO_RSN
            DOEXIT (LTR,R15,R15,NZ)               Data in cell?
@@ -213,8 +210,6 @@ PROCESS_QUERY_REQUEST MXEPROC DATAREG=(R12)
 * Construct the MXEREQPM block to pass to SRB as parameter
 * (o) MXEREQPM resides in ECSA
 * (o) As MXEREQPM is passed as parm to SRB, it must be 31-bit
-* (o) Store address of MXEREQ and the creation STCK as the correlation
-*     token.
 *--------+---------+---------+---------+---------+---------+---------+-
        STORAGE OBTAIN,                                                 +
                LENGTH=MXEREQPM@LEN,                                    +
@@ -228,9 +223,6 @@ PROCESS_QUERY_REQUEST MXEPROC DATAREG=(R12)
        MVC   MXEREQPM_TYPE,MXEREQ_TYPE           Query type
        LAE   R1,MXEGBVT                          Anchor MXEGBVT
        STG   R1,MXEREQPM_MXEGBVT
-       LAE   R1,MXEREQ                           Correlation
-       STG   R1,MXEREQPM_TOKEN_ADDR
-       MVC   MXEREQPM_TOKEN_SEQ,MXEREQ_STCK
        LAE   R1,ASCB                             ASCB address
        ST    R1,MXEREQPM_ASCB
        LLGT  R14,ASCBASSB                        STOKEN
