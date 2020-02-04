@@ -35,7 +35,7 @@ MXESRVPC TITLE 'MXE - SERVER SYSTEM-LX PC-SS ROUTINE'
 * r1  - paramter passed : MXEREQ
 * r2  -
 * r3  -
-* r4  -
+* r4  - Address of latent parms on entry
 * r5  -
 * r6  -
 * r7  -
@@ -63,7 +63,6 @@ MXESRVPC MXEMAIN DATAREG=(R12),BAKR=NO,PARMS=(R8)
      MXEMAC INIT,WA,LENGTH==AL4(WA@LEN)      Clear
      MXEMAC SET_ID,WA                        Init block
      USING SAVF4SA,WA_SAVEAREA
-     MVC   SAVF4SAID,=A(SAVF4SAID_VALUE)
 *--------+---------+---------+---------+---------+---------+---------+-
 * We can use the common recovery routine as our ARR
 *--------+---------+---------+---------+---------+---------+---------+-
@@ -76,6 +75,12 @@ CLNT USING MXEREQ,R8
 *--------+---------+---------+---------+---------+---------+---------+-
      DO    ,
        MXEMAC ASC,AR                             AR mode
+       MXEMAC SET_RC,WA_RETINFO_RC,MXEEQU@RC_SEVERE
+       MXEMAC SET_RSN,WA_RETINFO_RSN,MXEEQU@RSN_BAD_ENV
+       LLGT  R11,0(,R4)                          Get 1st latent parm
+       USING MXEGBVT,R11                         = MXEGBVT
+       MXEMAC VER_ID,MXEGBVT                     bad-eyecatch?
+       DOEXIT (LTR,R15,R15,NZ)
        LAM   R8,R8,=A(AR@SEC)                    Set to SASN
        LAE   R1,CLNT.MXEREQ                      Addr of caller MXEREQ
        ST    R1,WA_CALLER_MXEREQ                 Remember
@@ -103,22 +108,6 @@ CLNT USING MXEREQ,R8
                RC=WA_RETINFO_RC,                                       +
                RSN=WA_RETINFO_RSN
        DOEXIT (LTR,R15,R15,NZ)                   Give up if bad
-*--------+---------+---------+---------+---------+---------+---------+-
-* Get the MXEGBVT from the system level name/token
-*--------+---------+---------+---------+---------+---------+---------+-
-       MXEMAC SET_RC,WA_RETINFO_RC,MXEEQU@RC_SEVERE
-       MXEMAC SET_RSN,WA_RETINFO_RSN,MXEEQU@RSN_BAD_ENV
-       MXEREQ  REQ=GETTOKEN,                     Get MXEGBVT anchor    +
-               TOKEN=WA_TOKEN,                                         +
-               RC=WA_RC,                                               +
-               MF=(E,WA_MXEREQ_INTL)
-       DOEXIT (CLC,WA_RC,NE,=F'0')               Not there?
-       DOEXIT (LTG,R11,WA_TOKEN_ADDR,Z)          No address ?
-       USING MXEGBVT,R11
-       MXEMAC VER_ID,MXEGBVT                     bad-eyecatch?
-       DOEXIT (LTR,R15,R15,NZ)
-*--------+---------+---------+---------+---------+---------+---------+-
-* If we get here, the MXE environment looks OK.
 *--------+---------+---------+---------+---------+---------+---------+-
 * Examine the request type and decide what to do
 *--------+---------+---------+---------+---------+---------+---------+-
@@ -508,6 +497,7 @@ VALIDATE_PARAMETERS MXEPROC DATAREG=(R12)
 * Note that we are using the copy taken to our working storage
 *--------+---------+---------+---------+---------+---------+---------+-
      USING WA,R13
+     USING MXEGBVT,R11
      USING MXEREQ,WA_MXEREQ
      DO   ,
 *--------+---------+---------+---------+---------+---------+---------+-
@@ -606,7 +596,6 @@ WA_TOKEN_ADDR        DS    AD
 WA_TOKEN_SEQ         DS    XL8
                      DS    0D
 WA_MXEREQ            DS    XL(MXEREQ@LEN)
-WA_MXEREQ_INTL       DS    XL(MXEREQ@LEN)
                      DS    0D
 WA_DISPATCH_RC_ADDR  DS    A
 WA_SCHEDULE_RC_ADDR  DS    A

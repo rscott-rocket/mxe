@@ -234,6 +234,16 @@ DEFINE_PC_ROUTINE MXEPROC DATAREG=(R12)
                AKM=(0:15),                                             +
                EKM=(0:15),PKM=REPLACE,                                 +
                EK=(MXEGBVT@KEY)
+*--------+---------+---------+---------+---------+---------+---------+-
+* Store the MXEGBVT as the first parameter in the latent parms
+* Note that latent parm area address passed via R4 on entry to PC
+*--------+---------+---------+---------+---------+---------+---------+-
+       USING ETDELE,WA_ETDBASE_PC
+       LAE   R1,MXEGBVT
+       ST    R1,ETDPAR
+*--------+---------+---------+---------+---------+---------+---------+-
+* Create the ETEs and connect to linkage index
+*--------+---------+---------+---------+---------+---------+---------+-
        ETCRE ENTRIES=WA_ETDBASE
        STCM  R0,B'1111',MXEGBVT_TOKEN
        ETCON ELXLIST=MXEGBVT_SYSLX_LIST,                               +
@@ -750,7 +760,7 @@ BPOOLDEF@LEN       EQU   *-BPOOLDEF
          IEANTASM
          IHASAVER
          IHAECB
-         IHAETD   FORMAT=1
+         IHAETD   FORMAT=1,LIST=YES
          IEZCOM
 CIB      DSECT
          IEZCIB
