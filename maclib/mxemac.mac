@@ -249,7 +249,7 @@
 .*                   is reached.
 .*
 .*                   Syntax:
-.*                     MXEMAC MOVE_DEST_EKY,target,source,
+.*                     MXEMAC MOVE_DEST_KEY,target,source,
 .*                            KEY=field,LENGTH=field
 .*
 .*                 : MOVE_SRC_KEY (MVCSK)
@@ -263,7 +263,7 @@
 .*                   is reached.
 .*
 .*                   Syntax:
-.*                     MXEMAC MOVE_SRC_EKY,target,source,
+.*                     MXEMAC MOVE_SRC_KEY,target,source,
 .*                            KEY=field,LENGTH=field
 .*
 .*                 : REG_DENY
