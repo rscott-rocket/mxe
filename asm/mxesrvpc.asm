@@ -524,6 +524,30 @@ VALIDATE_PARAMETERS MXEPROC DATAREG=(R12)
 *--------+---------+---------+---------+---------+---------+---------+-
        SELECT CLI,MXEREQ_REQ,EQ
          WHEN (MXEREQ@REQ_QUERY)
+           MXEMAC SET_RSN,WA_RSN,MXEEQU@RSN_NOT_AUTH
+*--------+---------+---------+---------+---------+---------+---------+-
+* User must be authorized to the MXE.ADDRSPAC profile in the FACILITY
+* class to use the QUERY function. If you want to match the same
+* check as IPCS, change the profile name to BLSACTV.ADDRSPAC.
+* The SAF class used must be RACLISTed as we are checking the resource
+* in cross-memory mode.
+*--------+---------+---------+---------+---------+---------+---------+-
+           LAM  R2,R2,=A(AR@HOME)
+           MXEMAC GET_ACEE,(R2)
+           MXEMAC ASC,PRIMARY
+           MVC   WA_FASTAUTH_PLIST,LC_FASTAUTH
+           RACROUTE REQUEST=FASTAUTH,                                  +
+               ATTR=READ,                                              +
+               ENTITY=LC_SAF_PROFILE,                                  +
+               CLASS=LC_SAF_CLASS,                                     +
+               ACEE=(R2),ACEEALET==A(AR@HOME),                         +
+               WKAREA=WA_FASTAUTH_WKAREA,                              +
+               WORKA=WA_RACROUTE_WORKA,                                +
+               RELEASE=2.4,                                            +
+               MF=(E,WA_FASTAUTH_PLIST)
+           LAM  R2,R2,=A(AR@PRIM)
+           MXEMAC ASC,AR
+           DOEXIT (CHI,R15,GT,LC@SAF_GOOD_RC)
 *--------+---------+---------+---------+---------+---------+---------+-
 * Type must be non-blank and non-zero
 *--------+---------+---------+---------+---------+---------+---------+-
@@ -559,6 +583,22 @@ VALIDATE_PARAMETERS MXEPROC DATAREG=(R12)
 *--------+---------+---------+---------+---------+---------+---------+-
 * Local constants (LTORG etc)
 *--------+---------+---------+---------+---------+---------+---------+-
+LC_FASTAUTH        DS   0D
+*
+           RACROUTE REQUEST=FASTAUTH,                                  +
+               ATTR=READ,                                              +
+               CLASS=*-*,                                              +
+               ENTITY=*-*,                                             +
+               RELEASE=2.4,                                            +
+               LOG=ASIS,                                               +
+               WORKA=*-*,                                              +
+               MF=L
+*
+LC@FASTAUTH_LEN    EQU   *-LC_FASTAUTH
+*
+LC_SAF_PROFILE     DC    CL39'MXE.ADDRSPAC'
+LC_SAF_CLASS       DC    C'FACILITY'
+LC@SAF_GOOD_RC     EQU   0
      MXEPROC END
 *
 *
@@ -601,6 +641,10 @@ WA_DISPATCH_RC_ADDR  DS    A
 WA_SCHEDULE_RC_ADDR  DS    A
 WA_SRB_RC_ADDR       DS    A
 WA_SRB_RSN_ADDR      DS    A
+                     DS    0D
+WA_RACROUTE_WORKA    DS    XL(512)
+WA_FASTAUTH_WKAREA   DS    XL(16*4)
+WA_FASTAUTH_PLIST    DS    XL(LC@FASTAUTH_LEN)
                      DS    0D
                      IEAMSCHD PLISTVER=MAX,MF=(L,WA_IEAMSCHD_PLIST)
                      DS    0D

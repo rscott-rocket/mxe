@@ -113,6 +113,16 @@
 .*                   Syntax:
 .*                     label MXEMAC BIT_REF
 .*
+.*                 : GET_ACEE
+.*
+.*                   Load the first operand register with the address
+.*                   of the ACEE (either from the TCB or if zero from
+.*                   the ASXB). If in cross-memory mode, the caller
+.*                   should prime the ARx with the correct ALET.
+.*
+.*                   Syntax:
+.*                     MXEMAC GET_ACEE,(Rx)
+.*
 .*                 : GET_IEANTCR
 .*
 .*                   Load the first operand register with the address
@@ -438,6 +448,7 @@
          AIF ('&REQ' EQ 'BIT_OFF').REQ_BIT_OFF Turn off bit
          AIF ('&REQ' EQ 'BIT_ON').REQ_BIT_ON   Turn on bit
          AIF ('&REQ' EQ 'BLANK').REQ_BLANK     Blank a field
+         AIF ('&REQ' EQ 'GET_ACEE').REQ_ACEE   Get the ACEE
          AIF ('&REQ' EQ 'GET_ASCB').REQ_ASCB   1st ASCB match jobname
          AIF ('&REQ' EQ 'GET_ADDR_KEY').REQ_ADDR_KEY Get address key
          AIF ('&REQ' EQ 'GET_JOBNAME').REQ_JOBNAME Extract jobname
@@ -644,6 +655,17 @@
          N     R0,=X'00F00000'         Mask out bits
          SRL   R0,16                   make it x'000000k0'
          ST    R0,&KEY                 Store
+         AGO   .EXIT
+.*-------+---------+---------+---------+---------+---------+---------+-
+.* Function GET_ACEE
+.*-------+---------+---------+---------+---------+---------+---------+-
+.REQ_ACEE ANOP
+         LLGT  &SYSLIST(2),X'021C'(,R0)            PSATOLD
+         IF (LT,&SYSLIST(2),X'0154'(,&SYSLIST(2)),Z)
+           LLGT  &SYSLIST(2),X'0224'(,R0)          PSAAOLD
+           LLGT  &SYSLIST(2),X'006C'(,&SYSLIST(2)) ASCBASXB
+           LLGT  &SYSLIST(2),X'00C8'(,&SYSLIST(2)) ASXBSENV
+         ENDIF
          AGO   .EXIT
 .*-------+---------+---------+---------+---------+---------+---------+-
 .* Function GET_IEANTCR (macro assist for name/token create)
