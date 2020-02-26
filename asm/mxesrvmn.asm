@@ -646,6 +646,7 @@ TERM_ENVIRONMENT MXEPROC DATAREG=(R12)
          CLOSE (WA_STEPLIB),MF=(E,WA_CLOSE_PLIST)
          MXEMAC BIT_OFF,WA@FLG1_STEPLIB_OPEN
        ENDIF
+       AXSET AX==Y(0)
      ENDDO
      MXEPROC RETURN
 *--------+---------+---------+---------+---------+---------+---------+-
