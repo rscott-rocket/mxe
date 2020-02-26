@@ -236,8 +236,6 @@ CORID  USING MXEARRAY,R9
 *--------+---------+---------+---------+---------+---------+---------+-
        LAE   R1,MXEREQPM_DISPATCH_RC             Dispatch
        ST    R1,WA_DISPATCH_RC_ADDR
-       LAE   R1,MXEREQPM_SCHEDULE_RC             Schedule
-       ST    R1,WA_SCHEDULE_RC_ADDR
        LAE   R1,MXEREQPM_RC                      SRB R15
        ST    R1,WA_SRB_RC_ADDR
        LAE   R1,MXEREQPM_RSN                     SRB R0
@@ -260,7 +258,7 @@ CORID  USING MXEARRAY,R9
                SYNCHCOMPADDR=WA_DISPATCH_RC_ADDR,                      +
                SYNCHCODEADDR=WA_SRB_RC_ADDR,                           +
                SYNCHRSNADDR=WA_SRB_RSN_ADDR,                           +
-               RETCODE=WA_SCHEDULE_RC_ADDR,                            +
+               RETCODE=MXEREQPM_SCHEDULE_RC,                           +
                PLISTVER=MAX,                                           +
                MF=(E,WA_IEAMSCHD_PLIST,COMPLETE)
 *--------+---------+---------+---------+---------+---------+---------+-
