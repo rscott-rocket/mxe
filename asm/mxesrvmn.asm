@@ -54,7 +54,6 @@ MXESRVMN TITLE 'MXE - SERVER MAIN TASK'
 * r12 - Data
 * r13 - work area
 *
-*
 *--------+---------+---------+---------+---------+---------+---------+-
 * Changes
 * 2019/01/09   RDS    Code Written
