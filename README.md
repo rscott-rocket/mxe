@@ -1,34 +1,60 @@
-# mxe
+# MXE
+
 Sample z/OS synchronous cross memory server written in HLASM
 
 Strongly suggest installing on a test system only.
 
-To install :
+# Install
 
-(1) Copy the MXEALLOC.txt member of the samplib directory to z/OS system, edit it and submit the JCL.
+Allocate the PDS data sets for ASM, MACLIB, SAMPLIB
 
-(2) Copy the contents of the asm directory to the ASM dataset created in (1).
+## Clone the repository
 
-(3) Copy the contents of the maclib directory to the MACLIB dataset created in (1).
+If you have git installed on z/OS simply clone the repository from a command shell. 
 
-(4) Copy the contents of the samplib directory to the SAMPLIB dataset created in (1).
+### Using SSH
 
-(5) Ensure all z/OS dataset members are in EBCDIC.
+`git clone git@github.com:rscott-rocket/mxe.git`
+### Using HTTPS
 
-(6) Edit and submkit the MXEBUILD JCL in SAMPLIB to assemble and linkedit the product.
+`git clone https://github.com/rscott-rocket/mxe.git`
 
-(7) Update your runtime PARMLIB PROGxx member with the contents of MXEPROG in the SAMPLIB dataset.
+## Install from a zip file
 
-(8) Update your rutiime PARMLIB SCHEDxx member with the contents of MXESCHED in the SAMPLIB dataset.
+If you don't have git installed on z/OS download a zip file from Github and use the following instructions. 
 
-(9) Copy the contents of MXE in the SAMPLIB dataset to your system PROCLIB dataset.
+1. FTP the zip file to z/OS as a binary file
+2. Extract the zip file `jar xf mxe-master.zip`
+3. The files will be in ASCII (ISO8859-1) encoding so the files need to be tagged.
+    
+    * `cd mxe-master`
+    * `chtag -tc ISO8859-1 .`
+    
+## Copy the z/OS Unix files to PDS data sets
+    
+Copy the files from the file system converting ISO8859-1 to EBCDIC (if required) `-O u`. 
+File extensions will be stripped using the `-A` flag.
 
-(10) Assign a userid to the MXE started task and ensure it has read access to the SMXELOAD dataset.
+```
+   cp -A -O u asm/* "//'HLQ.MXE.ASM'"
+   cp -A -O u samplib/* "//'HLQ.MXE.SAMPLIB'"
+   cp -A -O u maclib/* "//'HLQ.MXE.MACLIB'"  
+```
 
-(11) Issue the "S MXE" operator command to start the server.
+# Post installation
 
-(12) MXE can be stopped using the "P MXE" operator command.
+* Edit the `MXEALLOC` member of the samplib directory to z/OS system and submit the JCL.
+* Edit and submit the `MXEBUILD` JCL in SAMPLIB to assemble and linkedit the product.
+* Update your runtime PARMLIB PROGxx member with the contents of `MXEPROG` in the SAMPLIB dataset.
+* Update your rutiime PARMLIB SCHEDxx member with the contents of `MXESCHED` in the SAMPLIB dataset.
+* Copy the contents of MXE in the SAMPLIB dataset to your system PROCLIB dataset.
+* Assign a userid to the MXE started task and ensure it has read access to the `SMXELOAD` dataset.
+* Issue the `S MXE` operator command to start the server.
 
-(13) Make the SMXELOAD dataset available to your TSO userid load module search order.
+MXE can be stopped using the `P MXE` operator command.
 
-(14) Issue the MXETSO command from ISPF option 6 or the READY prompt.
+# Running from TSO  
+
+Make the `SMXELOAD` dataset available to your TSO userid load module search order.
+
+Issue the `MXETSO` command from ISPF option 6 or the READY prompt.
