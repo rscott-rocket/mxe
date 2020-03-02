@@ -1,6 +1,6 @@
 # encode all files as EBCDIC unless mentioned elsewhere
-*       git-encoding=iso8859-1 working-tree-encoding=ibm-1047
+*       git-encoding=iso8859-1 zos-working-tree-encoding=ibm-1047
 *.bin            binary
 # encode selected files as ASCII
-.gitattributes   git-encoding=iso8859-1 working-tree-encoding=iso8859-1
-.gitignore       git-encoding=iso8859-1 working-tree-encoding=iso8859-1
+.gitattributes   git-encoding=iso8859-1 zos-working-tree-encoding=iso8859-1
+.gitignore       git-encoding=iso8859-1 zos-working-tree-encoding=iso8859-1
