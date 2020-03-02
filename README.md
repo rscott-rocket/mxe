@@ -14,18 +14,21 @@ If you don't have git installed on z/OS download a zip file from Github and use 
 
 * FTP the zip file to z/OS as a binary file
 * Extract the zip file `jar xf mxe-master.zip`
-* The files will be in ASCI (ISO8859-1) encoding so the files need to be tagged.
+* The files will be in ASCII (ISO8859-1) encoding so the files need to be tagged.
     
     * `cd mxe-master`
     * `chtag -tc ISO8859-1 .`
     
-# Copy the z/OS Unix files to PDS data sets
+## Copy the z/OS Unix files to PDS data sets
     
-* Copy the files from the file system converting ISO8859-1 to EBCDIC (if required) `-O u` and strip the file extensions `-A`.
+* Copy the files from the file system converting ISO8859-1 to EBCDIC (if required) `-O u`. 
+File extensions will be stripped using the `-A` flag.
 
-* `cp -A -O u asm/* "//'HLQ.MXE.ASM'"`
-* `cp -A -O u samplib/* "//'HLQ.MXE.SAMPLIB'"`
-* `cp -A -O u maclib/* "//'HLQ.MXE.MACLIB'"`
+    ```
+    cp -A -O u asm/* "//'HLQ.MXE.ASM'"
+    cp -A -O u samplib/* "//'HLQ.MXE.SAMPLIB'"  
+    cp -A -O u maclib/* "//'HLQ.MXE.MACLIB'"  
+    ```
 
 # Post installation
 
