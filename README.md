@@ -8,6 +8,17 @@ Strongly suggest installing on a test system only.
 
 Allocate the PDS data sets for ASM, MACLIB, SAMPLIB
 
+## Clone the repository
+
+If you have git installed on z/OS simply clone the repository from a command shell. 
+
+### Using SSH
+
+`git clone git@github.com:rscott-rocket/mxe.git`
+### Using HTTPS
+
+`git clone https://github.com/rscott-rocket/mxe.git`
+
 ## Install from a zip file
 
 If you don't have git installed on z/OS download a zip file from Github and use the following instructions. 
