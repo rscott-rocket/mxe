@@ -21,7 +21,7 @@ If you don't have git installed on z/OS download a zip file from Github and use 
     
 ## Copy the z/OS Unix files to PDS data sets
     
-* Copy the files from the file system converting ISO8859-1 to EBCDIC (if required) `-O u`. 
+Copy the files from the file system converting ISO8859-1 to EBCDIC (if required) `-O u`. 
 File extensions will be stripped using the `-A` flag.
 
     ```
