@@ -35,6 +35,8 @@ If you don't have git installed on z/OS download a zip file from Github and use 
 Copy the files from the file system converting ISO8859-1 to EBCDIC (if required) `-O u`. 
 File extensions will be stripped using the `-A` flag.
 
+Ensure you have set the `_BPXK_AUTOCVT=ON` environment variable. 
+
 ```
    cp -A -O u asm/* "//'HLQ.MXE.ASM'"
    cp -A -O u samplib/* "//'HLQ.MXE.SAMPLIB'"
