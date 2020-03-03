@@ -28,7 +28,7 @@ If you don't have git installed on z/OS download a zip file from Github and use 
 3. The files will be in ASCII (ISO8859-1) encoding so the files need to be tagged.
     
     * `cd mxe-master`
-    * `chtag -tc ISO8859-1 .`
+    * `chtag -R -tc ISO8859-1 .`
     
 ## Copy the z/OS Unix files to PDS data sets
     
